@@ -1,0 +1,161 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_desk.tscn" id="1_desk"]
+[ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_chair.tscn" id="2_chair"]
+[ext_resource type="Script" path="res://demo/demo.gd" id="3_demo"]
+
+[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
+
+[sub_resource type="Sky" id="Sky_1"]
+sky_material = SubResource("ProceduralSkyMaterial_1")
+
+[sub_resource type="Environment" id="Environment_1"]
+background_mode = 2
+sky = SubResource("Sky_1")
+tonemap_mode = 2
+ssao_enabled = true
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_floor"]
+size = Vector3(14, 1, 14)
+
+[sub_resource type="StandardMaterial3D" id="StandardMaterial3D_floor"]
+albedo_color = Color(0.55, 0.55, 0.54, 1)
+roughness = 0.3
+uv1_scale = Vector3(14, 14, 14)
+
+[sub_resource type="BoxMesh" id="BoxMesh_floor"]
+material = SubResource("StandardMaterial3D_floor")
+size = Vector3(14, 1, 14)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_wall"]
+size = Vector3(14, 3, 0.3)
+
+[sub_resource type="BoxMesh" id="BoxMesh_wall"]
+size = Vector3(14, 3, 0.3)
+
+[node name="PropsDemo" type="Node3D"]
+script = ExtResource("3_demo")
+
+[node name="WorldEnvironment" type="WorldEnvironment" parent="."]
+environment = SubResource("Environment_1")
+
+[node name="Sun" type="DirectionalLight3D" parent="."]
+transform = Transform3D(0.819152, -0.40558, 0.40558, 0, 0.707107, 0.707107, -0.573576, -0.579228, 0.579228, 0, 6, 0)
+light_energy = 0.8
+shadow_enabled = true
+
+[node name="Camera3D" type="Camera3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.642788, 0.766044, 0, -0.766044, 0.642788, 0, 5.2, 6.2)
+fov = 55.0
+
+[node name="Floor" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.5, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="Floor"]
+shape = SubResource("BoxShape3D_floor")
+
+[node name="Mesh" type="MeshInstance3D" parent="Floor"]
+mesh = SubResource("BoxMesh_floor")
+
+[node name="WallN" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, -7)
+
+[node name="Shape" type="CollisionShape3D" parent="WallN"]
+shape = SubResource("BoxShape3D_wall")
+
+[node name="Mesh" type="MeshInstance3D" parent="WallN"]
+mesh = SubResource("BoxMesh_wall")
+
+[node name="WallS" type="StaticBody3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.5, 7)
+
+[node name="Shape" type="CollisionShape3D" parent="WallS"]
+shape = SubResource("BoxShape3D_wall")
+
+[node name="WallE" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, 7, 1.5, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="WallE"]
+shape = SubResource("BoxShape3D_wall")
+
+[node name="Mesh" type="MeshInstance3D" parent="WallE"]
+mesh = SubResource("BoxMesh_wall")
+
+[node name="WallW" type="StaticBody3D" parent="."]
+transform = Transform3D(0, 0, -1, 0, 1, 0, 1, 0, 0, -7, 1.5, 0)
+
+[node name="Shape" type="CollisionShape3D" parent="WallW"]
+shape = SubResource("BoxShape3D_wall")
+
+[node name="Mesh" type="MeshInstance3D" parent="WallW"]
+mesh = SubResource("BoxMesh_wall")
+
+[node name="Props" type="Node3D" parent="."]
+
+[node name="Desk0" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0, -2.2)
+
+[node name="Chair0" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.8, 0, -1.6500000000000001)
+
+[node name="Desk1" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 0, -2.2)
+
+[node name="Chair1" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.0, 0, -1.6500000000000001)
+
+[node name="Desk2" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0, -2.2)
+
+[node name="Chair2" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.8, 0, -1.6500000000000001)
+
+[node name="Desk3" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0, 0.2)
+
+[node name="Chair3" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.8, 0, 0.75)
+
+[node name="Desk4" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 0, 0.2)
+
+[node name="Chair4" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.0, 0, 0.75)
+
+[node name="Desk5" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0, 0.2)
+
+[node name="Chair5" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.8, 0, 0.75)
+
+[node name="Desk6" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.8, 0, 2.6)
+
+[node name="Chair6" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, -1.8, 0, 3.1500000000000004)
+
+[node name="Desk7" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.0, 0, 2.6)
+
+[node name="Chair7" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 0.0, 0, 3.1500000000000004)
+
+[node name="Desk8" parent="Props" instance=ExtResource("1_desk")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0, 2.6)
+
+[node name="Chair8" parent="Props" instance=ExtResource("2_chair")]
+transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.8, 0, 3.1500000000000004)
+
+[node name="Hands" type="Node3D" parent="."]
+
+[node name="HandSpawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("res://demo/demo_hand.tscn")
+spawn_path = NodePath("../Hands")
+
+[node name="UI" type="CanvasLayer" parent="."]
+
+[node name="Status" type="Label" parent="UI"]
+offset_left = 12.0
+offset_top = 10.0
+offset_right = 900.0
+offset_bottom = 60.0

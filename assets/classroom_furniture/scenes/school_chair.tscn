@@ -1,0 +1,89 @@
+[gd_scene load_steps=11 format=3]
+
+[ext_resource type="Script" path="res://assets/classroom_furniture/scripts/networked_prop.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/classroom_furniture/models/school_chair.glb" id="2_model"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_prop"]
+friction = 0.6
+bounce = 0.15
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_0"]
+size = Vector3(0.41, 0.035, 0.41)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_1"]
+size = Vector3(0.37, 0.44, 0.035)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_2"]
+size = Vector3(0.045, 0.4, 0.04)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_3"]
+size = Vector3(0.045, 0.4, 0.04)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_4"]
+size = Vector3(0.054, 0.032, 0.43)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_5"]
+size = Vector3(0.054, 0.032, 0.43)
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_6"]
+size = Vector3(0.31, 0.135, 0.31)
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_prop"]
+properties/0/path = NodePath(".:net_position")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+properties/1/path = NodePath(".:net_rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 2
+properties/2/path = NodePath(".:net_linear_velocity")
+properties/2/spawn = true
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:holder_peer_id")
+properties/3/spawn = true
+properties/3/replication_mode = 2
+
+[node name="SchoolChair" type="RigidBody3D"]
+collision_layer = 1
+collision_mask = 1
+mass = 4.5
+physics_material_override = SubResource("PhysicsMaterial_prop")
+continuous_cd = true
+contact_monitor = true
+max_contacts_reported = 4
+script = ExtResource("1_script")
+hold_offset = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, -0.45, -0.2)
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="ColSeat" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.437, 0.005)
+shape = SubResource("BoxShape3D_0")
+
+[node name="ColBack" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 0.984808, 0.173648, 0, -0.173648, 0.984808, 0, 0.735, -0.24)
+shape = SubResource("BoxShape3D_1")
+
+[node name="ColLegL" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17, 0.22, -0.02)
+shape = SubResource("BoxShape3D_2")
+
+[node name="ColLegR" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, 0.22, -0.02)
+shape = SubResource("BoxShape3D_3")
+
+[node name="ColFootL" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -0.17, 0.016, 0)
+shape = SubResource("BoxShape3D_4")
+
+[node name="ColFootR" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0.17, 0.016, 0)
+shape = SubResource("BoxShape3D_5")
+
+[node name="ColBasket" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.11, -0.02)
+shape = SubResource("BoxShape3D_6")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = SubResource("SceneReplicationConfig_prop")

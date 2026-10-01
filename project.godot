@@ -1,0 +1,21 @@
+; Engine configuration file.
+; It's best edited using the editor UI and not directly,
+; since the parameters that go here are not all obvious.
+;
+; Format:
+;   [section] ; section goes between []
+;   param=value ; assign values to parameters
+
+config_version=5
+
+[application]
+
+config/name="Classroom Furniture Props"
+config/description="Throwable, network-synced school desk and chair props for a Godot 4 brawl game."
+run/main_scene="res://demo/props_demo.tscn"
+config/features=PackedStringArray("4.3", "Forward Plus")
+
+[physics]
+
+common/physics_ticks_per_second=60
+3d/physics_engine="GodotPhysics3D"
