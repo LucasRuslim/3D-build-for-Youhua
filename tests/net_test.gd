@@ -62,6 +62,29 @@ func _initialize() -> void:
 		check(hand != null, "client: host spawned my hand")
 		check(demo.get_node("Hands").has_node("1"), "client: host's hand replicated")
 		check(chair.freeze, "client: remote chair is kinematic (host simulates)")
+		# Run a local character into Chair0: the push goes to the host, which
+		# moves the chair, and the move comes back to us.
+		var chair0: NetworkedProp = demo.get_node("Props/Chair0")
+		var c0_start := chair0.global_position
+		var runner := CharacterBody3D.new()
+		var cs := CollisionShape3D.new()
+		cs.shape = CapsuleShape3D.new()
+		cs.shape.radius = 0.3
+		cs.shape.height = 1.8
+		runner.add_child(cs)
+		runner.position = c0_start + Vector3(-1.2, 0.91, 0)  # set before adding: never overlaps
+		demo.add_child(runner)
+		for i in 60:
+			runner.velocity = Vector3(5, 0, 0)
+			var v := runner.velocity
+			runner.move_and_slide()
+			NetworkedProp.push_from_character(runner, v)
+			await physics_frame
+		runner.queue_free()
+		await seconds(1.0)
+		var shoved := chair0.global_position.distance_to(c0_start)
+		check(shoved > 0.5, "client: running into Chair0 shoved it %.2f m (host-simulated)" % shoved)
+
 		hand.follow_mouse = false
 		# Face +X so the throw goes along the row, not into this chair's own desk.
 		var face_x := Basis.looking_at(Vector3.RIGHT, Vector3.UP)

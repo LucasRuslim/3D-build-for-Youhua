@@ -87,5 +87,33 @@ func _initialize() -> void:
 		prop.queue_free()
 		await wait_frames(2)
 
+	# A running CharacterBody3D (the usual player node) shoves furniture.
+	for scene_name in ["school_desk", "school_chair"]:
+		var prop: NetworkedProp = load("res://assets/classroom_furniture/scenes/%s.tscn" % scene_name).instantiate()
+		world.add_child(prop)
+		await wait_frames(60)
+		var start := prop.global_position
+		var runner := CharacterBody3D.new()
+		var cs := CollisionShape3D.new()
+		cs.shape = CapsuleShape3D.new()
+		cs.shape.radius = 0.3
+		cs.shape.height = 1.8
+		runner.add_child(cs)
+		runner.position = Vector3(-1.5, 0.91, 0)  # set before adding, so it never overlaps the prop
+		world.add_child(runner)
+		for i in 60:
+			runner.velocity = Vector3(5, 0, 0)  # running at 5 m/s along +X
+			var v := runner.velocity
+			runner.move_and_slide()
+			NetworkedProp.push_from_character(runner, v)
+			await physics_frame
+		await wait_frames(30)
+		var moved := prop.global_position.x - start.x
+		var tipped := prop.global_basis.y.dot(Vector3.UP) < 0.7
+		check(moved > 0.5, "running into the %s shoves it %.2f m%s" % [scene_name, moved, " and knocks it over" if tipped else ""])
+		runner.queue_free()
+		prop.queue_free()
+		await wait_frames(2)
+
 	print("RESULT: %s (%d failures)" % ["OK" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)

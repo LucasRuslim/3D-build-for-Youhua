@@ -77,10 +77,26 @@ tools/                        generators that rebuild the models, textures and s
    func on_prop_hit(prop, speed, thrower_id):
        health -= int(speed * 2)   # runs on the host; replicate health as usual
    ```
+5. Let players knock furniture over by running into it. A `CharacterBody3D`
+   (the usual player node) can't push physics objects by itself; it stops
+   against them like a wall. Add one line after `move_and_slide()` in your
+   player's movement code:
+
+   ```gdscript
+   var v := velocity          # remember it: move_and_slide() removes the blocked part
+   move_and_slide()
+   NetworkedProp.push_from_character(self, v)
+   ```
+
+   It works online too: clients send the push to the host, which moves the
+   furniture for everyone. Online, the character bumps the furniture for a
+   moment (about half the ping) before it starts sliding. If your players are
+   `RigidBody3D`s instead, they push furniture without this line.
 
 **Tuning** (in the Inspector, on each prop): `throw_speed`, `throw_lift`,
 `throw_spin`, `max_pickup_distance`, `hold_offset` (where the prop sits relative
-to the hands), `damage_min_speed`, plus `mass` and the physics material.
+to the hands), `damage_min_speed`, `push_strength` (lower = heavier to shove),
+`max_push_speed`, plus `mass` and the physics material.
 
 ### How the networking works
 
@@ -125,8 +141,10 @@ godot --headless --path . --script res://tests/net_test.gd -- client  # ENet loc
 ```
 
 Both suites pass on Godot 4.3. The physics test checks that the props settle
-upright, can be grabbed, follow the hand, get thrown at about 13 m/s, and report
-wall hits. In the network test a client grabs a chair and throws it; the host
+upright, can be grabbed, follow the hand, get thrown at about 13 m/s, report
+wall hits, and get shoved (about 5 m, knocked over) by a character running into
+them at 5 m/s. In the network test a client's character also shoves a chair
+(about 2 m) through the host. In the network test a client grabs a chair and throws it; the host
 sees the pickup, the flight (about 5 m), and hits credited to that client.
 
 ## Rebuilding the assets

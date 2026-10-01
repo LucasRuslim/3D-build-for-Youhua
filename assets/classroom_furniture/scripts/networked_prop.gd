@@ -45,6 +45,14 @@ const PROP_GROUP := &"networked_props"
 ## A throw counts as "owned" by the thrower for this long (seconds).
 @export var thrower_credit_time := 3.0
 
+@export_group("Pushing")
+## How hard running into the prop shoves it. 1.0 = the prop is pushed to
+## roughly the character's speed; lower feels heavier.
+@export var push_strength := 1.0
+## Pushes faster than this (m/s) are clamped. Stops cheating clients from
+## launching furniture.
+@export var max_push_speed := 12.0
+
 @export_group("Network smoothing")
 ## Higher = snappier but jerkier remote motion.
 @export var interpolation_speed := 18.0
@@ -107,6 +115,38 @@ func request_drop() -> void:
 
 func is_held() -> bool:
 	return holder_peer_id != 0
+
+
+## Shove the prop as if something moving at `push_velocity` ran into it at
+## `at_global`. Callable on any peer; clients forward it to the host.
+func push(push_velocity: Vector3, at_global: Vector3) -> void:
+	if is_multiplayer_authority():
+		_apply_push(push_velocity, at_global)
+	else:
+		_rpc_push.rpc_id(get_multiplayer_authority(), push_velocity, at_global)
+
+
+## CharacterBody3D doesn't push rigid bodies by itself: it just stops against
+## them like a wall. Call this right after move_and_slide() with the velocity
+## you had *before* move_and_slide() (which removes the blocked part):
+##
+##     var v := velocity
+##     move_and_slide()
+##     NetworkedProp.push_from_character(self, v)
+static func push_from_character(character: CharacterBody3D, velocity_before_move: Vector3) -> void:
+	var pushed := {}
+	for i in character.get_slide_collision_count():
+		var c := character.get_slide_collision(i)
+		var prop := c.get_collider() as NetworkedProp
+		if prop == null or pushed.has(prop) or prop.is_held():
+			continue
+		var n := c.get_normal()  # points from the prop towards the character
+		if n.y > 0.7:
+			continue  # standing on top of it, not running into it
+		if velocity_before_move.dot(-n) < 0.2:
+			continue  # moving away or just brushing past
+		pushed[prop] = true
+		prop.push(velocity_before_move, c.get_position())
 
 
 ## Finds the PropHolder node that belongs to `peer_id`, or null.
@@ -185,9 +225,34 @@ func _rpc_drop() -> void:
 	dropped.emit(peer)
 
 
+@rpc("any_peer", "call_remote", "unreliable_ordered")
+func _rpc_push(push_velocity: Vector3, at_global: Vector3) -> void:
+	if is_multiplayer_authority():
+		_apply_push(push_velocity, at_global)
+
+
 # --------------------------------------------------------------------------
 # Internals
 # --------------------------------------------------------------------------
+
+func _apply_push(push_velocity: Vector3, at_global: Vector3) -> void:
+	if is_held() or freeze:
+		return
+	# Horizontal shove, towards the speed of whatever hit us. Re-sent every
+	# frame while touching, so it eases the prop up to speed rather than
+	# launching it, and applying it at the contact point tips things over.
+	var dir := Vector3(push_velocity.x, 0, push_velocity.z)
+	var speed := minf(dir.length(), max_push_speed) * push_strength
+	if speed < 0.05:
+		return
+	dir = dir.normalized()
+	var missing := speed - linear_velocity.dot(dir)
+	if missing <= 0.0:
+		return
+	var offset := (at_global - global_position).limit_length(1.5)
+	sleeping = false
+	apply_impulse(dir * missing * mass * 0.5, offset)
+
 
 func _update_mode(force := false) -> void:
 	var sim := is_multiplayer_authority()
