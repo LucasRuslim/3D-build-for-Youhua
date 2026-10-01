@@ -367,13 +367,16 @@ def rounded_rect_path(cx, cz, w, d, r, y, seg=5):
     return pts
 
 
-def add_wire_basket(part, cx, cz, w, d, y_rim, y_bottom, rim_r=0.009, wire_r=0.0025, spacing=0.045):
+def add_wire_basket(part, cx, cz, w, d, y_rim, y_bottom, rim_r=0.009, wire_r=0.0025, spacing=0.045,
+                    avoid_x=(), avoid_gap=0.03):
     """Book basket like the ones on the reference furniture: a bent round-tube
     rim with U-shaped wires hanging from it, plus a few wires along the floor."""
     add_round_tube_path(part, rounded_rect_path(cx, cz, w, d, 0.04, y_rim), rim_r, sides=10, closed=True)
     taper = 0.02  # the basket narrows towards the bottom
     n = max(int((w - 0.06) / spacing), 1)
     xs = np.linspace(cx - w / 2 + 0.03, cx + w / 2 - 0.03, n + 1)
+    # No wires through the frame posts the rim is welded to.
+    xs = np.array([x for x in xs if all(abs(x - a) >= avoid_gap for a in avoid_x)])
     bend = 0.012
     zf, zb = cz + d / 2 - rim_r, cz - d / 2 + rim_r
     for x in xs:
@@ -417,16 +420,19 @@ def build_desk():
         # Height-adjust clamp collar.
         add_box(steel, (x, 0.45, 0.0), (0.06, 0.03, 0.04))
         # Floor foot bar with black rubber end caps.
-        # Wide flat floor bar with chunky black rubber end caps.
-        add_tube(steel, (x, 0.016, -0.20), (x, 0.016, 0.20), 0.06, 0.032)
+        add_tube(steel, (x, 0.0175, -0.21), (x, 0.0175, 0.21), tube[1] + 0.005, 0.035)
         for sz in (-1, 1):
-            add_box(rubber, (x, 0.017, sz * 0.2125), (0.064, 0.034, 0.025))
+            add_box(rubber, (x, 0.0175, sz * 0.2165), (0.032, 0.037, 0.013))
         # Diagonal-ish gusset from post to top rail (two short boxes).
         add_tube(steel, (x, y0 - 0.06, -0.14), (x, y0 - 0.06, 0.14), 0.02, 0.02)
     # Low stretcher between the two side frames (has the sticker in the video).
     add_tube(steel, (-leg_x, 0.16, 0.0), (leg_x, 0.16, 0.0), 0.04, 0.02)
-    # Wire book basket hanging under the top, between the legs.
-    add_wire_basket(steel, 0.0, -0.02, 2 * (leg_x - 0.025 - 0.009), 0.34, y0 - 0.045, y0 - 0.15)
+    # Sheet-steel book tray under the top, open towards the student (+Z).
+    tray_y = y0 - 0.15
+    add_box(steel, (0, tray_y, -0.02), (2 * leg_x - 0.03, 0.006, 0.34))
+    add_box(steel, (0, tray_y + 0.06, -0.19), (2 * leg_x - 0.03, 0.12, 0.006))
+    for sx in (-1, 1):
+        add_box(steel, (sx * (leg_x - 0.018), tray_y + 0.06, -0.02), (0.006, 0.12, 0.34))
     return {"GreenPlastic": plastic, "SteelGrey": steel, "BlackRubber": rubber}
 
 
@@ -576,7 +582,9 @@ def build_chair():
             add_box(rubber, (x, 0.016, sz * 0.2025), (0.054, 0.032, 0.025))
     # Wire basket under the seat, its rim welded to both posts (it also acts
     # as the frame's cross brace).
-    add_wire_basket(steel, 0.0, -0.02, 2 * (leg_x - 0.0225 - 0.009), 0.30, 0.17, 0.045)
+    # Like the reference photo, the rim runs a little past the posts at both
+    # ends, so the basket is longer than the gap between them.
+    add_wire_basket(steel, 0.0, -0.02, 2 * (leg_x + 0.025), 0.30, 0.17, 0.045, avoid_x=(-leg_x, leg_x))
     # Backrest support strut: rear cross bar + upright bolted to the shell.
     add_tube(steel, (-leg_x, seat_bottom - 0.0125, -0.16), (leg_x, seat_bottom - 0.0125, -0.16), 0.02, 0.025)
     shell_back = curve[np.argmin(np.abs(curve[:, 1] - (SEAT_H + 0.24)))]

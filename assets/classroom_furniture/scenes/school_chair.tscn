@@ -26,7 +26,7 @@ size = Vector3(0.054, 0.032, 0.43)
 size = Vector3(0.054, 0.032, 0.43)
 
 [sub_resource type="BoxShape3D" id="BoxShape3D_6"]
-size = Vector3(0.31, 0.135, 0.31)
+size = Vector3(0.41, 0.135, 0.31)
 
 [sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_prop"]
 properties/0/path = NodePath(".:net_position")

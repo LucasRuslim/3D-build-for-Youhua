@@ -11,8 +11,8 @@ they stay in sync in online or LAN multiplayer.
 
 ```
 assets/classroom_furniture/
-  models/school_desk.glb      desk mesh, ~2k tris, 3 materials
-  models/school_chair.glb     chair mesh, ~5.8k tris, 3 materials
+  models/school_desk.glb      desk mesh, 884 tris, 3 materials
+  models/school_chair.glb     chair mesh, ~5.9k tris, 3 materials
   textures/*.png              tileable 1024² PBR textures (albedo / normal / ORM)
   scenes/school_desk.tscn     RigidBody3D, 9 kg, 7 box colliders, net-synced
   scenes/school_chair.tscn    RigidBody3D, 4.5 kg, 7 box colliders, net-synced
@@ -26,12 +26,13 @@ tools/                        generators that rebuild the models, textures and s
 **How it looks**
 - **Desk:** 70 × 48 cm moulded top with a rounded rim and a pen groove along the
   back edge. It sits on grey powder-coated steel: single-post height-adjustable
-  legs, wide flat floor bars with chunky black rubber caps, a low stretcher, and
-  a wire book basket under the top. The top is 76 cm high.
+  legs, floor foot bars with black rubber caps, a low stretcher, and a sheet-steel
+  book tray open towards the student. The top is 76 cm high.
 - **Chair:** one-piece green plastic shell with a curved seat, pinched waist and
-  round-topped backrest. It has the same grey steel post-and-foot-bar frame,
-  plus a low wire basket between the posts: a bent round-tube rim with U-shaped
-  wires. Seat height is 44 cm.
+  round-topped backrest, on a grey steel frame with wide flat foot bars and
+  chunky rubber caps. Under the seat is a low wire basket: a bent round-tube rim
+  welded to both posts and running a little past them (39 cm long), with
+  U-shaped wires. Seat height is 44 cm.
 - **Colours** are sampled from the video. The phone's dark, desaturated filter is
   corrected out (using the white floor tiles as the white reference), which gives
   plastic `#8BC76D` and steel `#8E9094`. To change them, edit `PLASTIC_GREEN` /
