@@ -3,9 +3,9 @@
 You are receiving ready-made **Godot 4.3+** assets for a multiplayer brawl game:
 a green plastic school desk and chair that can be pushed, picked up and thrown,
 plus eight stationery weapons that can also stab or swing, a bow with arrows,
-ten everyday school items (including a foam-spraying fire extinguisher), ping
-pong and badminton gear, a vending machine, and drinks/potions with status
-effects. All of them stay in sync over LAN or online play. Everything below is already built
+ten everyday school items (including a foam-spraying fire extinguisher), red
+spray paint that leaves real paint marks, ping pong and badminton gear, a
+vending machine, and drinks/potions with status effects. All of them stay in sync over LAN or online play. Everything below is already built
 and tested. Your job is usually just to wire it into the game's player and level.
 
 ## Rules that matter
@@ -362,6 +362,31 @@ All are `StationeryWeapon`s.
 Machine weights: water 4, health 2, speed 1.5, strength / shield / jump 1.2,
 sleep 1.
 
+### Spray paint (`school_items/scripts/spray_paint.gd`, `class_name SprayPaint`)
+
+- **Scene:** `school_items/scenes/spray_paint.tscn`. Syncs `paint` (0–1) and
+  `spraying`. Model origin is the middle of the can, with the nozzle at
+  `nozzle` (0, 0.112, −0.018) spraying along −Z.
+- **Controls:** `request_attack()` sprays when `paint > 0` (otherwise it
+  swings); `request_release()` stops.
+- **Host spray tick (every 0.05 s):** casts `rays_per_tick` (4) rays in a
+  `spray_spread_deg` (5°) cone, up to `spray_range` (4 m), excluding the can
+  and the holder. Each hit becomes a mark. Its transform (basis.z = surface
+  normal, random roll, size `mark_size_near`–`mark_size_far` by distance) is
+  stored *relative to the hit body*. Batches go to every peer through the
+  reliable RPC `_add_marks(paths, local_transforms, variants)`.
+- **Marks:** each is a `MeshInstance3D` named `PaintMark*` parented to the hit
+  body (StaticBody, prop or character), with a shared QuadMesh and an
+  alpha-scissor material (`paint_splat_0..3.png` tinted `paint_color`). So
+  paint moves with props.
+- **Late joiners:** the host keeps a history (up to `max_marks`) and replays
+  it to each new peer 1 s after `peer_connected`.
+- **Cap:** every peer frees the oldest marks past `max_marks` (600).
+- **Players:** non-prop, non-static bodies get the `painted` status effect
+  (`painted_effect_duration` 4 s, throttled to every 0.5 s), and the
+  `painted(body, position)` signal fires.
+- **Other colours:** set `paint_color`; materials are cached per colour.
+
 ### Minimal player wiring
 
 ```gdscript
@@ -446,6 +471,16 @@ beside a chair pick the chair, not the compass on the desk.
 - The client fires a ball volley at a target that exists on both peers. The
   host applies `sleep`, and the client sees it through the synced
   `StatusEffects`.
+
+- The host paints the front wall before the client joins. The client sees
+  all the replayed marks, then paints the wall itself, and the host sees the
+  new marks.
+
+**Spray paint (offline):** the can rests and is grabbable. Holding attack
+sprays and releasing stops. A second leaves dozens of marks flat on the wall
+facing out, within 40 cm of the aim at 1.5 m, and paint drains. A chair gets
+painted and its marks move with it; a sprayed player gets `painted`. Marks are
+capped at `max_marks`, the can runs dry, and an empty can swings.
 
 **Sports and vending (offline):**
 - **Every item** rests and can be picked up.

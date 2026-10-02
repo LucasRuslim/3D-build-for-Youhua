@@ -3,7 +3,8 @@
 A green plastic school desk and chair, modelled on the reference video, eight
 pieces of stationery that work as weapons, a bow with arrows, ten everyday
 school things to fight with (including a fire extinguisher that sprays foam),
-ping pong and badminton gear, and a vending machine that sells potions. Everything is
+ping pong and badminton gear, a vending machine that sells potions, and red
+spray paint that really paints. Everything is
 a ready-to-use physics prop: you can push it, pick it up and throw it, the
 weapons can also stab, swing or shoot, and it all stays in sync in online or LAN
 multiplayer.
@@ -261,6 +262,30 @@ func apply_knockback(v: Vector3):
   Everyone within 2.5 m takes 10 damage (kind `"burst"`) and gets knocked
   back.
 
+### Spray paint
+
+![Red spray paint on a wall and a chair](docs/spray_paint.jpg)
+
+`assets/school_items/scenes/spray_paint.tscn`: a can of **red** spray paint
+that really paints.
+
+- **Spraying:** hold attack (`$Hands.attack()` on press,
+  `$Hands.attack_release()` on release). A red mist comes out, and **paint
+  marks appear on whatever it hits**: walls, floors, desks, chairs, players.
+  It reaches 4 m.
+- **Paint sticks:** marks stay on what they hit, so a painted chair keeps its
+  paint when it's thrown.
+- **Painted players:** they get the `painted` status effect for 4 s, which
+  you can use for a red-tinted screen, a tracking marker and so on.
+- **Running out:** a can holds 20 seconds of spraying (`paint`, synced).
+  Empty, it's a small club.
+- **Multiplayer:** everyone sees the same paint, including players who join
+  after it was sprayed.
+- **Mark limit:** each can keeps up to 600 marks (`max_marks`); the oldest
+  disappear first.
+- **Other colours:** the colour is the `paint_color` setting, so a blue or
+  green can is just a copy of the scene with a different colour.
+
 ## Ping pong and badminton
 
 ![Paddle, racket, shuttlecock, ball, ball bucket](docs/sports_preview.jpg)
@@ -342,15 +367,15 @@ used instead.
 Open the folder in Godot 4.3+ and press F5. There's a piece of stationery on
 every desk, a bow with 5 arrows on the floor at the front left, fire
 extinguishers by the side walls, the other school items around the room, a
-vending machine at the front, a ping pong corner (front right) and a badminton
-corner (left).
+vending machine at the front, a can of red spray paint near the front wall, a
+ping pong corner (front right) and a badminton corner (left).
 
 | Input | Action |
 |---|---|
 | Mouse | Move your hand (coloured ball) |
 | Left mouse button | Grab or throw |
 | Right mouse button | Drop |
-| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot; with the fire extinguisher, hold to spray; with a drink, drink it; with the ball bucket, fire a volley |
+| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot; with the fire extinguisher or spray paint, hold to spray; with a drink, drink it; with the ball bucket, fire a volley |
 | F | Use the vending machine |
 | Left mouse button near an arrow (holding the bow) | Load the arrow |
 | Space | Shockwave |
@@ -370,6 +395,7 @@ godot --headless --path . --script res://tests/stationery_test.gd   # offline
 godot --headless --path . --script res://tests/archery_test.gd      # offline
 godot --headless --path . --script res://tests/school_items_test.gd # offline
 godot --headless --path . --script res://tests/sports_vending_test.gd # offline
+godot --headless --path . --script res://tests/spray_paint_test.gd  # offline
 godot --headless --path . --script res://tests/net_test.gd -- server &
 godot --headless --path . --script res://tests/net_test.gd -- client  # ENet localhost
 ```
@@ -409,6 +435,12 @@ a chosen product and stops when empty. For drinks: drinking heals or applies
 the effect and empties the bottle, a thrown water bottle leaves a puddle that
 makes players slip, and sleep and health potions splash everyone nearby.
 
+The spray paint test checks that holding attack sprays and releasing stops, and
+that a second of spraying leaves dozens of marks lying flat on the wall where
+you aimed. It also checks that paint marks a chair and moves with it, that a
+sprayed player gets `painted`, that marks are capped, and that the can runs out
+and then swings.
+
 In the network test a client's character shoves a chair through the host, then
 the client grabs a chair and throws it; the host sees the pickup, the flight
 and hits credited to that client. Finally the client grabs a pencil off a desk,
@@ -420,7 +452,9 @@ extinguisher and sprays a target on the host: both sides see the spray, and the
 host registers the foam hits and knockback for the client. Then the client
 buys a drink from the vending machine (both sides see it appear at the
 machine), drinks it, and fires a ball volley that puts a target to sleep. The
-sleep effect syncs from the host to the client.
+sleep effect syncs from the host to the client. For spray paint, the host paints
+the front wall before the client joins and the client still sees every mark;
+then the client paints the wall and the host sees it.
 
 ## Rebuilding the assets
 
