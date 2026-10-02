@@ -4,6 +4,7 @@ extends Node3D
 ##   Mouse    move your hand            LMB  grab / throw
 ##   RMB      drop                      E / MMB  stab or swing held stationery;
 ##                                      with the bow: hold to draw, release to shoot
+##                                      with a fire extinguisher: hold to spray foam
 ##   (holding the bow, LMB near an arrow loads it)
 ##   Space    shockwave (host only)
 ##   F1       host a LAN/online game    F2   join (default 127.0.0.1)

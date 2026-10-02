@@ -6,6 +6,7 @@ extends SceneTree
 
 const DummyTarget := preload("res://tests/dummy_target.gd")
 const STAB_SPOT := Vector3(4.0, 1.1, 5.6)  # client's hand for the stationery part
+const SPRAY_SPOT := Vector3(4.5, 1.2, -0.5)  # client's hand for the fire extinguisher part
 
 var failures := 0
 
@@ -39,6 +40,12 @@ func _initialize() -> void:
 		dummy.add_child(dcs)
 		dummy.position = STAB_SPOT + Vector3(0, -0.19, -0.6)
 		demo.add_child(dummy)
+		var foam_target: CharacterBody3D = DummyTarget.new()
+		var fcs := CollisionShape3D.new()
+		fcs.shape = dcs.shape
+		foam_target.add_child(fcs)
+		foam_target.position = SPRAY_SPOT + Vector3(0, -0.2, -2.0)
+		demo.add_child(foam_target)
 		var hits := []
 		chair.hit.connect(func(body, speed, thrower): hits.append([body.name, speed, thrower]))
 		var t := 0.0
@@ -80,6 +87,15 @@ func _initialize() -> void:
 				"server: client's arrow stuck in the west wall (x=%.2f)" % arrow.global_position.x)
 		check(arrow_hits.any(func(h): return h[3] == "shot" and h[2] == client_id and h[1] > 40.0),
 				"server: arrow hit credited to the client as a shot (%s)" % [arrow_hits])
+		# Fire extinguisher: the client sprays the foam target.
+		t = 0.0
+		while t < 15.0 and foam_target.hits.size() < 4:
+			await seconds(0.1)
+			t += 0.1
+		await seconds(0.5)
+		var foam: Array = foam_target.hits.filter(func(h): return h.kind == "spray" and h.attacker == client_id)
+		check(foam.size() >= 4 and not foam_target.knockbacks.is_empty(),
+				"server: client's foam hit the target %d times and pushed it back" % foam.size())
 		await seconds(1.0)
 	else:
 		check(demo.join("127.0.0.1") == OK, "client: joining")
@@ -179,6 +195,25 @@ func _initialize() -> void:
 		await seconds(1.5)
 		check(bow.arrow_count == 0 and arrow.bow_state == Arrow.BowState.FREE and absf(arrow.global_position.x + 6.5) < 0.4,
 				"client: sees the arrow stuck in the west wall (x=%.2f)" % arrow.global_position.x)
+
+		# Fire extinguisher: drop the bow, grab the extinguisher, spray the host's target.
+		hand.holder.drop()
+		await seconds(0.5)
+		var ext: FireExtinguisher = demo.get_node("Props/FireExtinguisher2")
+		hand.global_transform = Transform3D(Basis.IDENTITY, ext.global_position + Vector3(-0.3, 0.4, 0))
+		await seconds(0.5)
+		check(hand.holder.try_grab(), "client: extinguisher grab requested")
+		await seconds(0.5)
+		check(ext.holder_peer_id == me, "client: holding the extinguisher")
+		hand.global_transform = Transform3D(Basis.IDENTITY, SPRAY_SPOT)
+		await seconds(0.6)
+		hand.holder.attack()
+		await seconds(0.8)
+		check(ext.spraying, "client: sees the extinguisher spraying")
+		hand.holder.attack_release()
+		await seconds(0.5)
+		check(not ext.spraying and ext.spray_charge < 0.95,
+				"client: spray stopped, foam left %.2f" % ext.spray_charge)
 
 	print("RESULT[%s]: %s (%d failures)" % [role, "OK" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)

@@ -1,11 +1,17 @@
 extends SceneTree
-## Renders preview PNGs of every stationery weapon:
-##   xvfb-run godot --path . --rendering-driver opengl3 --script res://tools/render_stationery.gd -- <out_dir>
+## Renders preview PNGs of every stationery weapon (or another prop folder):
+##   xvfb-run godot --path . --rendering-driver opengl3 --script res://tools/render_stationery.gd -- \
+##       <out_dir> [res://assets/<folder> item1 item2 ...]
 
-const ITEMS := ["pencil", "ballpoint_pen", "ruler", "scissors", "compass", "stapler", "eraser", "pencil_case"]
+var ITEMS := ["pencil", "ballpoint_pen", "ruler", "scissors", "compass", "stapler", "eraser", "pencil_case"]
+var folder := "res://assets/stationery"
 
 func _initialize() -> void:
-	var out_dir: String = OS.get_cmdline_user_args()[0]
+	var args := OS.get_cmdline_user_args()
+	var out_dir: String = args[0]
+	if args.size() > 2:
+		folder = args[1]
+		ITEMS = args.slice(2)
 	root.size = Vector2i(800, 600)
 	var world := Node3D.new()
 	root.add_child(world)
@@ -39,10 +45,11 @@ func _initialize() -> void:
 
 	var nodes := []
 	for i in ITEMS.size():
-		var n: Node3D = load("res://assets/stationery/scenes/%s.tscn" % ITEMS[i]).instantiate()
+		var n: Node3D = load("%s/scenes/%s.tscn" % [folder, ITEMS[i]]).instantiate()
 		n.process_mode = Node.PROCESS_MODE_DISABLED
 		world.add_child(n)
 		nodes.append(n)
+	await process_frame  # let the scene enter the tree before measuring
 	# Each item on its own, then all of them side by side.
 	for i in ITEMS.size():
 		for j in nodes.size():
@@ -53,12 +60,12 @@ func _initialize() -> void:
 		aabb = _aabb(n)
 		var c := aabb.get_center()
 		var r: float = aabb.size.length()
-		cam.look_at_from_position(c + Vector3(0.55, 0.75, 0.55).normalized() * r * 1.3, c)
+		cam.look_at_from_position(c + Vector3(0.55, 0.75, 0.55).normalized() * r * 1.75, c)
 		await _shot(out_dir.path_join("item_%s.png" % ITEMS[i]))
 	for j in nodes.size():
 		nodes[j].visible = true
 		var a := _aabb(nodes[j])
-		nodes[j].global_position = Vector3((j - 3.5) * 0.085, nodes[j].global_position.y, 0)
+		nodes[j].global_position = Vector3((j - (nodes.size() - 1) / 2.0) * 0.085, nodes[j].global_position.y, 0)
 	cam.look_at_from_position(Vector3(0.0, 0.55, 0.55), Vector3(0, 0, -0.02))
 	await _shot(out_dir.path_join("all.png"))
 	quit()

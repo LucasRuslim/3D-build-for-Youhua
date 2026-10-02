@@ -1,7 +1,8 @@
 # Classroom props for a Godot 4 brawl game
 
 A green plastic school desk and chair, modelled on the reference video, eight
-pieces of stationery that work as weapons, and a bow with arrows. Everything is
+pieces of stationery that work as weapons, a bow with arrows, and ten everyday
+school things to fight with, including a fire extinguisher that sprays foam. Everything is
 a ready-to-use physics prop: you can push it, pick it up and throw it, the
 weapons can also stab, swing or shoot, and it all stays in sync in online or LAN
 multiplayer.
@@ -210,17 +211,67 @@ Bow settings in the Inspector: `max_arrows`, `shoot_speed`, `min_draw`,
 `draw_time`, `draw_length`, `collect_range`. Arrow damage per m/s is the
 arrow's `throw_damage_per_speed`.
 
+## Everyday school items
+
+![School items](docs/school_items_preview.jpg)
+
+`assets/school_items/` has ten more things you'd find at school. They're
+`StationeryWeapon`s too, so pickup, throwing and melee work like the
+stationery. Copy it together with `assets/classroom_furniture` and
+`assets/stationery`.
+
+| Item | Attack | Melee damage | Special |
+|---|---|---|---|
+| Fire extinguisher | swing | 20 | hold attack to **spray foam**; bursts when thrown hard |
+| Broom | swing | 9 | longest reach (1.7 m) |
+| Umbrella | stab | 11 | long reach (1.35 m) |
+| Textbook | swing | 10 | spins flat when thrown |
+| Backpack | swing | 13 | heavy knockback |
+| Water bottle | swing | 9 | the cream insulated bottle from the photo |
+| Basketball | swing | 5 | bounces (about 64% of its drop height) |
+| Trash bin | swing | 14 | heaviest knockback, hits hard when thrown |
+| Whiteboard eraser | swing | 4 | light and fast, good for throwing |
+| Lunch tray | swing | 10 | flies flat like a frisbee |
+
+**Knockback:** most of these push the person they hit. If your player script
+has `apply_knockback(velocity: Vector3)`, the host calls it with the push to
+apply, for example:
+
+```gdscript
+func apply_knockback(v: Vector3):
+    velocity += v   # on your CharacterBody3D; runs on the host
+```
+
+### Fire extinguisher
+
+![Fire extinguisher spraying foam](docs/extinguisher_spray.jpg)
+
+- **Spray:** hold attack (`$Hands.attack()` on press,
+  `$Hands.attack_release()` on release) to spray foam in a 22° cone up to
+  4 m. Every 0.1 s it deals a little damage (6 per second, kind `"spray"`),
+  pushes players back through `apply_knockback`, and shoves loose furniture (a
+  second or so of spray slides a chair about a metre). Foam doesn't go through walls, and every
+  player sees the foam particles.
+- **Foam runs out:** a full extinguisher sprays for 8 seconds. `spray_charge`
+  (1 down to 0) is synced, so you can show it on a HUD; call `refill()` on
+  the host to top it up.
+- **Empty,** attack is a heavy swing (20 damage).
+- **Burst:** thrown into something at 9 m/s or more with foam left, it bursts.
+  Everyone within 2.5 m takes 10 damage (kind `"burst"`) and gets knocked
+  back.
+
 ## Try the demo
 
 Open the folder in Godot 4.3+ and press F5. There's a piece of stationery on
-every desk, and a bow with 5 arrows on the floor at the front left.
+every desk, a bow with 5 arrows on the floor at the front left, fire
+extinguishers by the side walls, and the other school items around the room.
 
 | Input | Action |
 |---|---|
 | Mouse | Move your hand (coloured ball) |
 | Left mouse button | Grab or throw |
 | Right mouse button | Drop |
-| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot |
+| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot; with the fire extinguisher, hold to spray |
 | Left mouse button near an arrow (holding the bow) | Load the arrow |
 | Space | Shockwave |
 | R | Reset furniture |
@@ -237,6 +288,7 @@ godot --headless --path . --import
 godot --headless --path . --script res://tests/physics_test.gd      # offline
 godot --headless --path . --script res://tests/stationery_test.gd   # offline
 godot --headless --path . --script res://tests/archery_test.gd      # offline
+godot --headless --path . --script res://tests/school_items_test.gd # offline
 godot --headless --path . --script res://tests/net_test.gd -- server &
 godot --headless --path . --script res://tests/net_test.gd -- client  # ENet localhost
 ```
@@ -257,13 +309,23 @@ tip-first into a wall 12 m away), shoots a quick tap at a character, collects
 the stuck arrow back, spills arrows when the bow is dropped, swings the empty
 bow, and stabs with an arrow by hand.
 
+The school items test checks each item rests on the floor, can be picked up,
+hits (and knocks back) for its listed damage, and does damage when thrown.
+It also checks the tray and textbook spin flat and the basketball bounces. For
+the fire extinguisher it checks that the spray repeatedly hits and pushes a
+target in front, misses one outside the cone and one behind a wall, shoves a
+chair, and uses up foam; that the empty extinguisher swings; and that throwing
+it into a wall bursts and knocks back a bystander.
+
 In the network test a client's character shoves a chair through the host, then
 the client grabs a chair and throws it; the host sees the pickup, the flight
 and hits credited to that client. Finally the client grabs a pencil off a desk,
 stabs a target on the host and throws the pencil into a wall, where both sides
 see it stuck. Last, the client picks up the bow, loads an arrow, draws and
 shoots it into a wall; both sides see the draw and the stuck arrow, and the
-host credits the shot to the client.
+host credits the shot to the client. Then the client picks up a fire
+extinguisher and sprays a target on the host: both sides see the spray, and the
+host registers the foam hits and knockback for the client.
 
 ## Rebuilding the assets
 
@@ -273,4 +335,5 @@ python3 tools/generate_assets.py   # models + textures
 python3 tools/make_scenes.py       # prop scenes / colliders
 python3 tools/generate_stationery.py   # stationery models, textures, scenes
 python3 tools/generate_archery.py      # bow and arrow models, scenes
+python3 tools/generate_school_items.py # school item models, textures, scenes
 ```

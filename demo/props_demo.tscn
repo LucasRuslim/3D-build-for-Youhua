@@ -1,8 +1,18 @@
-[gd_scene load_steps=22 format=3]
+[gd_scene load_steps=32 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_desk.tscn" id="1_desk"]
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_chair.tscn" id="2_chair"]
 [ext_resource type="Script" path="res://demo/demo.gd" id="3_demo"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/backpack.tscn" id="si_backpack"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/basketball.tscn" id="si_basketball"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/board_eraser.tscn" id="si_board_eraser"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/broom.tscn" id="si_broom"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/fire_extinguisher.tscn" id="si_fire_extinguisher"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/lunch_tray.tscn" id="si_lunch_tray"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/textbook.tscn" id="si_textbook"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/trash_bin.tscn" id="si_trash_bin"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/umbrella.tscn" id="si_umbrella"]
+[ext_resource type="PackedScene" path="res://assets/school_items/scenes/water_bottle.tscn" id="si_water_bottle"]
 [ext_resource type="PackedScene" path="res://assets/archery/scenes/bow.tscn" id="a0_bow"]
 [ext_resource type="PackedScene" path="res://assets/archery/scenes/arrow.tscn" id="a1_arrow"]
 [ext_resource type="PackedScene" path="res://assets/stationery/scenes/pencil.tscn" id="s0_pencil"]
@@ -200,6 +210,42 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.94, 0.05, 5.4)
 
 [node name="Arrow4" parent="Props" instance=ExtResource("a1_arrow")]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.82, 0.05, 5.4)
+
+[node name="FireExtinguisher" parent="Props" instance=ExtResource("si_fire_extinguisher")]
+transform = Transform3D(0.0000, 0, 1.0000, 0, 1, 0, -1.0000, 0, 0.0000, -6.45, 0.61, -3.0)
+
+[node name="FireExtinguisher2" parent="Props" instance=ExtResource("si_fire_extinguisher")]
+transform = Transform3D(0.0000, 0, -1.0000, 0, 1, 0, 1.0000, 0, 0.0000, 6.45, 0.61, 2.0)
+
+[node name="Broom" parent="Props" instance=ExtResource("si_broom")]
+transform = Transform3D(0.8660, 0, 0.5000, 0, 1, 0, -0.5000, 0, 0.8660, -5.4, 0.04, 0.5)
+
+[node name="Umbrella" parent="Props" instance=ExtResource("si_umbrella")]
+transform = Transform3D(0.5000, 0, -0.8660, 0, 1, 0, 0.8660, 0, 0.5000, 5.2, 0.06, -1.0)
+
+[node name="Textbook" parent="Props" instance=ExtResource("si_textbook")]
+transform = Transform3D(0.9659, 0, 0.2588, 0, 1, 0, -0.2588, 0, 0.9659, -2.6, 0.04, -4.0)
+
+[node name="Textbook2" parent="Props" instance=ExtResource("si_textbook")]
+transform = Transform3D(0.8192, 0, -0.5736, 0, 1, 0, 0.5736, 0, 0.8192, -2.2, 0.04, -4.4)
+
+[node name="Backpack" parent="Props" instance=ExtResource("si_backpack")]
+transform = Transform3D(-0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, -0.9397, 2.7, 0.48, -0.8)
+
+[node name="WaterBottle" parent="Props" instance=ExtResource("si_water_bottle")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 0.9, 0.17, 3.9)
+
+[node name="Basketball" parent="Props" instance=ExtResource("si_basketball")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 3.0, 0.14, -4.5)
+
+[node name="TrashBin" parent="Props" instance=ExtResource("si_trash_bin")]
+transform = Transform3D(1.0000, 0, 0.0000, 0, 1, 0, -0.0000, 0, 1.0000, 6.2, 0.22, -6.2)
+
+[node name="BoardEraser" parent="Props" instance=ExtResource("si_board_eraser")]
+transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, 0.0, 0.04, -5.6)
+
+[node name="LunchTray" parent="Props" instance=ExtResource("si_lunch_tray")]
+transform = Transform3D(0.9063, 0, 0.4226, 0, 1, 0, -0.4226, 0, 0.9063, -2.8, 0.04, 4.2)
 
 [node name="Hands" type="Node3D" parent="."]
 

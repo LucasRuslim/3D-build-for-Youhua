@@ -34,6 +34,15 @@ enum AttackStyle { STAB, SWING }
 @export var tip_first_bonus := 1.5
 ## Melee swings knock loose props (desks, chairs, ...) with this impulse.
 @export var swing_knockback := 3.0
+## Melee hits push characters back at this speed (m/s), through their
+## apply_knockback(velocity) method if they have one. 0 = no knockback.
+@export var melee_knockback := 0.0
+## Thrown items spin flat around their own up axis (trays, books) instead of
+## tumbling randomly.
+@export var flat_spin := false
+## Use continuous collision detection while flying fast, so thin, fast items
+## don't pass through things. It kills bounces, so balls turn it off.
+@export var ccd_in_flight := true
 
 @export_group("Pointy")
 ## Fly tip-first like a dart and stick into static surfaces (walls, floor).
@@ -58,6 +67,9 @@ func _ready() -> void:
 	picked_up.connect(func(_peer):
 		_stuck = false
 		_throw_kind = "throw")
+	thrown.connect(func(_peer, _v):
+		if flat_spin:
+			angular_velocity = global_basis.y * throw_spin)
 
 
 func _physics_process(delta: float) -> void:
@@ -71,7 +83,7 @@ func _physics_process(delta: float) -> void:
 	# Continuous collision detection stops fast throws from passing through
 	# things, but on small, light items it also makes resting contact jittery
 	# (they can sink into a desk). So only use it while flying fast.
-	continuous_cd = linear_velocity.length() > 4.0
+	continuous_cd = ccd_in_flight and linear_velocity.length() > 4.0
 	if pointy and not freeze and holder_peer_id == 0:
 		_steer_tip_into_flight(delta)
 
@@ -122,6 +134,8 @@ func _rpc_attack() -> void:
 	for body in _melee_targets(origin, aim, exclude):
 		weapon_hit.emit(body, melee_damage, peer, kind)
 		_send_damage(body, melee_damage, peer, kind, melee_damage)
+		if melee_knockback > 0.0 and body.has_method("apply_knockback"):
+			body.call("apply_knockback", (aim + Vector3.UP * 0.3).normalized() * melee_knockback)
 		if body is RigidBody3D and not (body is NetworkedProp and body.is_held()):
 			var push := aim * swing_knockback * (0.5 if kind == "stab" else 1.0)
 			(body as RigidBody3D).apply_central_impulse(push * minf((body as RigidBody3D).mass, 10.0) * 0.2)
@@ -141,7 +155,7 @@ func _melee_targets(origin: Vector3, aim: Vector3, exclude: Array[RID]) -> Array
 		var d := 0.15
 		while d <= melee_range + 0.001:
 			query.transform = Transform3D(Basis.IDENTITY, origin + aim * d)
-			for r in space.intersect_shape(query, 4):
+			for r in space.intersect_shape(query, 16):
 				var body: Node = r.collider
 				if _is_melee_target(body):
 					return [body]
@@ -150,7 +164,7 @@ func _melee_targets(origin: Vector3, aim: Vector3, exclude: Array[RID]) -> Array
 		# A wide arc in front: everything inside gets hit.
 		sphere.radius = melee_range * 0.5
 		query.transform = Transform3D(Basis.IDENTITY, origin + aim * melee_range * 0.55)
-		for r in space.intersect_shape(query, 8):
+		for r in space.intersect_shape(query, 64):
 			var body: Node = r.collider
 			if _is_melee_target(body) and not found.has(body):
 				found.append(body)

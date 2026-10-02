@@ -45,7 +45,11 @@ func held_prop() -> NetworkedProp:
 	return NetworkedProp.find_prop_held_by(get_tree(), get_multiplayer_authority())
 
 
-## Closest free prop within reach, or null.
+## The free prop within reach that's nearest to the hands, or null.
+## Nearness = distance to the prop's surface + distance to its middle: the
+## surface alone favours big furniture (a desk beats the pencil lying on it),
+## the middle alone ignores size (a pencil on the next desk beats the chair
+## you're touching). Reach is measured to the surface.
 func find_grab_target() -> NetworkedProp:
 	var best: NetworkedProp = null
 	var best_d := INF
@@ -53,8 +57,11 @@ func find_grab_target() -> NetworkedProp:
 		var prop := node as NetworkedProp
 		if prop == null or prop.is_held():
 			continue
-		var d := _distance_to_prop(prop)
-		if d <= reach and d < best_d:
+		var surface := _distance_to_prop(prop)
+		if surface > reach:
+			continue
+		var d := surface + global_position.distance_to(_centre_of(prop))
+		if d < best_d:
 			best_d = d
 			best = prop
 	return best
@@ -114,6 +121,16 @@ func toggle_grab_throw() -> void:
 			throw()
 	else:
 		try_grab()
+
+
+func _centre_of(prop: NetworkedProp) -> Vector3:
+	var sum := Vector3.ZERO
+	var n := 0
+	for child in prop.get_children():
+		if child is CollisionShape3D:
+			sum += child.global_position
+			n += 1
+	return sum / n if n > 0 else prop.global_position
 
 
 func _distance_to_prop(prop: NetworkedProp) -> float:

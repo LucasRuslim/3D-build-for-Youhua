@@ -61,8 +61,11 @@ def add_transformed(part: MeshPart, basis, origin, build) -> None:
 
 
 def add_lathe(part: MeshPart, profile, sides=16, flat=False, angle0=0.0, cap_start=False, cap_end=False,
-              center=(0.0, 0.0)):
-    """Surface of revolution around the Z axis. profile: [(radius, z), ...]."""
+              center=(0.0, 0.0), uv_band=None, profile_normals=False):
+    """Surface of revolution around the Z axis. profile: [(radius, z), ...].
+    uv_band=(z0, z1) maps V to 0-1 over that Z range (for wrap-around labels).
+    profile_normals: take normals from the profile's direction instead of
+    pointing them outward (needed for double walls, e.g. a bin's inside)."""
     prof = [(max(r, 0.0002), z) for r, z in profile]
     cx, cy = center
     angles = [angle0 + 2 * math.pi * k / sides for k in range(sides + 1)]
@@ -91,9 +94,20 @@ def add_lathe(part: MeshPart, profile, sides=16, flat=False, angle0=0.0, cap_sta
         flip = (n * radial).sum(axis=2) < 0
         n[flip] = -n[flip]
         n /= np.maximum(np.linalg.norm(n, axis=2, keepdims=True), 1e-12)
+        if profile_normals:
+            pr = np.array(prof)
+            t = np.gradient(pr, axis=0)
+            nr, nz = t[:, 1], -t[:, 0]  # tangent turned clockwise in the (r, z) plane
+            ln = np.maximum(np.hypot(nr, nz), 1e-12)
+            nr, nz = nr / ln, nz / ln
+            ang = np.array(angles)
+            n = np.stack([nr[:, None] * np.cos(ang)[None, :], nr[:, None] * np.sin(ang)[None, :],
+                          np.repeat(nz[:, None], len(ang), axis=1)], axis=-1)
         uv = np.zeros((rows, sides + 1, 2))
         uv[..., 0] = np.arange(sides + 1)[None, :] / sides
         uv[..., 1] = grid[..., 2] * UV_SCALE
+        if uv_band is not None:
+            uv[..., 1] = (grid[..., 2] - uv_band[0]) / (uv_band[1] - uv_band[0])
         p, nn = grid.reshape(-1, 3), n.reshape(-1, 3)
         part.add(p, nn, uv.reshape(-1, 2), fix_winding(p, nn, grid_indices(rows, sides + 1)))
     for use, i, sign in ((cap_start, 0, 1), (cap_end, rows - 1, -1)):
@@ -383,25 +397,41 @@ ITEMS = [
 
 
 def write_scene(fname: str, node: str, mass: float, lo, hi, settings: dict, out: Path = OUT,
-                script: str = "stationery_weapon.gd", extra_synced: tuple = ()) -> None:
-    """Write a StationeryWeapon-style rigid body scene into out/scenes/."""
+                script: str = "stationery_weapon.gd", extra_synced: tuple = (), shape: str = "box",
+                friction: float = 0.7, bounce: float = 0.2, min_size: float = 0.016,
+                pad_up: bool = False) -> None:
+    """Write a StationeryWeapon-style rigid body scene into out/scenes/.
+    shape: "box" (fits the mesh bounds), "sphere", or "cylinder" (along Y).
+    Box sides thinner than min_size are padded (thin, light boxes are unstable
+    in Godot physics); pad_up grows a thin Y side upwards from the bottom so
+    the item still sits flush on surfaces."""
     res = "res://" + out.relative_to(ROOT).as_posix()
-    size = np.maximum(hi - lo, 0.016)  # thin, light boxes are unstable in Godot physics
+    script_path = script if script.startswith("res://") else f"{res}/scripts/{script}"
+    size = np.maximum(hi - lo, min_size)
     centre = (hi + lo) / 2
+    if pad_up:
+        centre[1] = lo[1] + size[1] / 2
     f = lambda v: f"{v + 0.0:.5g}"
     lines = [
         "[gd_scene load_steps=6 format=3]",
         "",
-        f'[ext_resource type="Script" path="{res}/scripts/{script}" id="1_script"]',
+        f'[ext_resource type="Script" path="{script_path}" id="1_script"]',
         f'[ext_resource type="PackedScene" path="{res}/models/{fname}.glb" id="2_model"]',
         "",
         '[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_item"]',
-        "friction = 0.7",
-        "bounce = 0.2",
+        f"friction = {friction}",
+        f"bounce = {bounce}",
         "",
-        '[sub_resource type="BoxShape3D" id="BoxShape3D_item"]',
-        f"size = Vector3({f(size[0])}, {f(size[1])}, {f(size[2])})",
-        "",
+    ]
+    if shape == "sphere":
+        lines += ['[sub_resource type="SphereShape3D" id="BoxShape3D_item"]', f"radius = {f(size.max() / 2)}", ""]
+    elif shape == "cylinder":
+        lines += ['[sub_resource type="CylinderShape3D" id="BoxShape3D_item"]', f"height = {f(size[1])}",
+                  f"radius = {f(max(size[0], size[2]) / 2)}", ""]
+    else:
+        lines += ['[sub_resource type="BoxShape3D" id="BoxShape3D_item"]',
+                  f"size = Vector3({f(size[0])}, {f(size[1])}, {f(size[2])})", ""]
+    lines += [
         '[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_item"]',
     ]
     for i, p in enumerate(["net_position", "net_rotation", "net_linear_velocity", "holder_peer_id", *extra_synced]):
