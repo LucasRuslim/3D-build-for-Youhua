@@ -4,6 +4,9 @@ extends SceneTree
 ##   godot --headless --path . --script res://tests/net_test.gd -- client
 ## The client grabs Chair4 and throws it; both sides must see it fly.
 
+const DummyTarget := preload("res://tests/dummy_target.gd")
+const STAB_SPOT := Vector3(4.0, 1.1, 5.6)  # client's hand for the stationery part
+
 var failures := 0
 
 
@@ -27,6 +30,15 @@ func _initialize() -> void:
 
 	if role == "server":
 		check(demo.host() == OK, "server: hosting")
+		# Host-only target for the client's pencil stab (damage is host-side).
+		var dummy: CharacterBody3D = DummyTarget.new()
+		var dcs := CollisionShape3D.new()
+		dcs.shape = CapsuleShape3D.new()
+		dcs.shape.radius = 0.3
+		dcs.shape.height = 1.8
+		dummy.add_child(dcs)
+		dummy.position = STAB_SPOT + Vector3(0, -0.19, -0.6)
+		demo.add_child(dummy)
 		var hits := []
 		chair.hit.connect(func(body, speed, thrower): hits.append([body.name, speed, thrower]))
 		var t := 0.0
@@ -45,6 +57,17 @@ func _initialize() -> void:
 		var moved := chair.global_position.distance_to(start)
 		check(moved > 1.2, "server: chair flew %.2f m" % moved)
 		check(hits.any(func(h): return h[2] == client_id), "server: hit credited to client (%s)" % [hits])
+		# Stationery: the client stabs the dummy, then throws the pencil at the east wall.
+		var pencil: StationeryWeapon = demo.get_node("Props/Pencil")
+		t = 0.0
+		while t < 15.0 and not (pencil.is_stuck() and dummy.hits.size() > 0):
+			await seconds(0.1)
+			t += 0.1
+		var stabs: Array = dummy.hits.filter(func(h): return h.kind == "stab" and h.attacker == client_id)
+		check(stabs.size() == 1 and stabs[0].damage == pencil.melee_damage,
+				"server: client's pencil stab hit the dummy (%s)" % [dummy.hits])
+		check(pencil.is_stuck() and absf(pencil.global_position.x - 6.85) < 0.3,
+				"server: thrown pencil stuck in the east wall (x=%.2f)" % pencil.global_position.x)
 		await seconds(1.0)
 	else:
 		check(demo.join("127.0.0.1") == OK, "client: joining")
@@ -100,6 +123,25 @@ func _initialize() -> void:
 		check(chair.holder_peer_id == 0, "client: chair released")
 		var moved := chair.global_position.distance_to(start)
 		check(moved > 1.2, "client: replicated chair flew %.2f m" % moved)
+
+		# Stationery over the network: grab the pencil off its desk, stab the
+		# host's dummy, then throw it into the east wall.
+		var pencil: StationeryWeapon = demo.get_node("Props/Pencil")
+		hand.global_transform = Transform3D(Basis.IDENTITY, pencil.global_position + Vector3(0, 0.4, 0.3))
+		await seconds(0.5)
+		check(hand.holder.try_grab(), "client: pencil grab requested")
+		await seconds(0.5)
+		check(pencil.holder_peer_id == me, "client: holding the pencil")
+		hand.global_transform = Transform3D(Basis.IDENTITY, STAB_SPOT)
+		await seconds(0.6)
+		hand.holder.attack()
+		await seconds(0.6)
+		hand.global_transform = Transform3D(Basis.looking_at(Vector3.RIGHT, Vector3.UP), STAB_SPOT)
+		await seconds(0.5)
+		hand.holder.throw()
+		await seconds(1.5)
+		check(pencil.holder_peer_id == 0 and absf(pencil.global_position.x - 6.85) < 0.3,
+				"client: sees the pencil stuck in the wall (x=%.2f)" % pencil.global_position.x)
 
 	print("RESULT[%s]: %s (%d failures)" % [role, "OK" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)

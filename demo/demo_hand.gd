@@ -52,3 +52,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			holder.toggle_grab_throw()
 		elif event.button_index == MOUSE_BUTTON_RIGHT:
 			holder.drop()
+		elif event.button_index == MOUSE_BUTTON_MIDDLE:
+			holder.attack()
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+		holder.attack()

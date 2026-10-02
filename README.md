@@ -1,8 +1,9 @@
-# Classroom furniture props for a Godot 4 brawl game
+# Classroom props for a Godot 4 brawl game
 
-A green plastic school desk and chair, modelled on the reference video. Both are
-ready-to-use physics props: you can push them, pick them up and throw them, and
-they stay in sync in online or LAN multiplayer.
+A green plastic school desk and chair, modelled on the reference video, plus
+eight pieces of stationery that work as weapons. Everything is a ready-to-use
+physics prop: you can push it, pick it up and throw it, the stationery can also
+stab or swing, and it all stays in sync in online or LAN multiplayer.
 
 ![Preview renders](docs/preview_sheet.jpg)
 ![Demo: shockwave sending the classroom flying](docs/demo_shockwave.jpg)
@@ -114,15 +115,73 @@ to the hands), `damage_min_speed`, `push_strength` (lower = heavier to shove),
 - **Offline needs no extra code.** With no network peer, Godot acts as peer 1,
   so single player and same-screen local multiplayer use the same code path.
 
+## Stationery weapons
+
+![Stationery weapons](docs/stationery_preview.jpg)
+
+Eight items in `assets/stationery/` (it uses the scripts in
+`assets/classroom_furniture/scripts/`, so copy both folders). Each is a
+`StationeryWeapon`: everything a furniture prop does, plus melee attacks, thrown
+damage and, for pointy items, sticking into walls.
+
+| Item | Attack | Melee damage | Notes |
+|---|---|---|---|
+| Pencil | stab | 12 | flies tip-first, sticks into walls |
+| Ballpoint pen | stab | 10 | flies tip-first, sticks into walls |
+| Scissors | stab | 18 | flies tip-first, sticks into walls |
+| Compass (drawing) | stab | 15 | flies tip-first, sticks into walls |
+| Ruler (30 cm) | swing | 8 | spins when thrown |
+| Stapler | swing | 16 | heavy, hits hardest when thrown |
+| Eraser | swing | 4 | light, quick |
+| Pencil case | swing | 7 | the navy pouch from the video |
+
+**Using them:**
+1. Drop the scenes from `assets/stationery/scenes/` into your level (on desks,
+   for example).
+2. Players pick them up and throw them with the same `PropHolder` as the
+   furniture. For a melee attack, call `$Hands.attack()`:
+
+   ```gdscript
+   if event.is_action_pressed("attack"): $Hands.attack()
+   ```
+
+3. Take damage in your player script. The host calls this on whatever got hit
+   (`kind` is `"stab"`, `"swing"` or `"throw"`):
+
+   ```gdscript
+   func on_weapon_hit(weapon, damage, attacker_peer_id, kind):
+       health -= damage   # runs on the host; replicate health as usual
+   ```
+
+   If your player only has `on_prop_hit` (from the furniture), weapons call
+   that instead.
+
+**How the attacks work:**
+- **Stab:** a quick lunge that hits the first thing in a thin line in front of
+  the hand (`melee_range`, about 0.8 m).
+- **Swing:** an arc that hits everything in a wide area in front, and knocks
+  loose props aside.
+- **Throw:** damage = impact speed × `throw_damage_per_speed`. Pointy items
+  steer tip-first in flight like a dart, deal 1.5× damage when they land tip
+  first, and stick into walls and floors until someone pulls them out by
+  grabbing them.
+- **Cooldown:** `attack_cooldown` per item, checked on the host.
+
+All of these are Inspector settings on each item, so you can rebalance without
+touching code. Attacks are requested by the holder and resolved on the host,
+like pickups and throws.
+
 ## Try the demo
 
-Open the folder in Godot 4.3+ and press F5.
+Open the folder in Godot 4.3+ and press F5. There's a piece of stationery on
+every desk.
 
 | Input | Action |
 |---|---|
 | Mouse | Move your hand (coloured ball) |
 | Left mouse button | Grab or throw |
 | Right mouse button | Drop |
+| E or middle mouse button | Stab or swing the held stationery |
 | Space | Shockwave |
 | R | Reset furniture |
 | F1 | Host on port 7777 |
@@ -136,6 +195,7 @@ To test across your LAN, run one copy with `-- --host` and another with
 ```bash
 godot --headless --path . --import
 godot --headless --path . --script res://tests/physics_test.gd      # offline
+godot --headless --path . --script res://tests/stationery_test.gd   # offline
 godot --headless --path . --script res://tests/net_test.gd -- server &
 godot --headless --path . --script res://tests/net_test.gd -- client  # ENet localhost
 ```
@@ -143,9 +203,18 @@ godot --headless --path . --script res://tests/net_test.gd -- client  # ENet loc
 Both suites pass on Godot 4.3. The physics test checks that the props settle
 upright, can be grabbed, follow the hand, get thrown at about 13 m/s, report
 wall hits, and get shoved (about 5 m, knocked over) by a character running into
-them at 5 m/s. In the network test a client's character also shoves a chair
-(about 2 m) through the host. In the network test a client grabs a chair and throws it; the host
-sees the pickup, the flight (about 5 m), and hits credited to that client.
+them at 5 m/s.
+
+The stationery test checks, for every item, that it rests on the floor, can be
+grabbed, stabs or swings once per cooldown for its listed damage, deals damage
+when thrown at a wall and at a character, and (pointy items) sticks into the
+wall and can be pulled back out.
+
+In the network test a client's character shoves a chair through the host, then
+the client grabs a chair and throws it; the host sees the pickup, the flight
+and hits credited to that client. Finally the client grabs a pencil off a desk,
+stabs a target on the host and throws the pencil into a wall, where both sides
+see it stuck.
 
 ## Rebuilding the assets
 
@@ -153,4 +222,5 @@ sees the pickup, the flight (about 5 m), and hits credited to that client.
 pip install numpy pillow
 python3 tools/generate_assets.py   # models + textures
 python3 tools/make_scenes.py       # prop scenes / colliders
+python3 tools/generate_stationery.py   # stationery models, textures, scenes
 ```

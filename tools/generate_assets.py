@@ -598,7 +598,12 @@ def build_chair():
 # Minimal glTF 2.0 (.glb) writer
 # --------------------------------------------------------------------------
 
-def write_glb(path: Path, name: str, parts: dict[str, MeshPart], tex: dict[str, Path]) -> None:
+def write_glb(path: Path, name: str, parts: dict[str, MeshPart], tex: dict[str, Path],
+              materials: dict[str, dict] | None = None) -> None:
+    """Write a .glb. `materials` maps a part name to a spec dict with any of:
+    color (sRGB 0-255), alpha, metallic, roughness, albedo_tex, normal_tex,
+    normal_scale, alpha_mode ("BLEND"/"MASK"), double_sided. Parts without a
+    spec use the furniture materials below."""
     gltf: dict = {
         "asset": {"version": "2.0", "generator": "3D-build-for-Youhua/tools/generate_assets.py"},
         "scene": 0,
@@ -649,7 +654,22 @@ def write_glb(path: Path, name: str, parts: dict[str, MeshPart], tex: dict[str, 
     for mat_name, part in parts.items():
         if part.count == 0:
             continue
-        if mat_name == "GreenPlastic":
+        spec = (materials or {}).get(mat_name)
+        if spec is not None:
+            pbr = {"baseColorFactor": [srgb_to_linear(c) for c in spec.get("color", (255, 255, 255))]
+                   + [spec.get("alpha", 1.0)],
+                   "metallicFactor": spec.get("metallic", 0.0),
+                   "roughnessFactor": spec.get("roughness", 0.5)}
+            if "albedo_tex" in spec:
+                pbr["baseColorTexture"] = {"index": texture(spec["albedo_tex"])}
+            mat = {"name": mat_name, "pbrMetallicRoughness": pbr}
+            if "normal_tex" in spec:
+                mat["normalTexture"] = {"index": texture(spec["normal_tex"]), "scale": spec.get("normal_scale", 0.3)}
+            if "alpha_mode" in spec:
+                mat["alphaMode"] = spec["alpha_mode"]
+            if spec.get("double_sided"):
+                mat["doubleSided"] = True
+        elif mat_name == "GreenPlastic":
             mat = {"name": mat_name, "pbrMetallicRoughness": {
                 "baseColorTexture": {"index": texture("plastic_green_albedo")},
                 "metallicRoughnessTexture": {"index": texture("plastic_green_orm")},

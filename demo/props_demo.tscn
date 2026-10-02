@@ -1,8 +1,16 @@
-[gd_scene load_steps=12 format=3]
+[gd_scene load_steps=20 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_desk.tscn" id="1_desk"]
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_chair.tscn" id="2_chair"]
 [ext_resource type="Script" path="res://demo/demo.gd" id="3_demo"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/pencil.tscn" id="s0_pencil"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/ballpoint_pen.tscn" id="s1_ballpoint_pen"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/ruler.tscn" id="s2_ruler"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/scissors.tscn" id="s3_scissors"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/compass.tscn" id="s4_compass"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/stapler.tscn" id="s5_stapler"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/eraser.tscn" id="s6_eraser"]
+[ext_resource type="PackedScene" path="res://assets/stationery/scenes/pencil_case.tscn" id="s7_pencil_case"]
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_1"]
 
@@ -145,6 +153,33 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 1.8, 0, 2.6)
 
 [node name="Chair8" parent="Props" instance=ExtResource("2_chair")]
 transform = Transform3D(-1, 0, 0, 0, 1, 0, 0, 0, -1, 1.8, 0, 3.1500000000000004)
+
+[node name="Pencil" parent="Props" instance=ExtResource("s0_pencil")]
+transform = Transform3D(0.9397, 0, 0.3420, 0, 1, 0, -0.3420, 0, 0.9397, -1.750, 0.83, -2.180)
+
+[node name="BallpointPen" parent="Props" instance=ExtResource("s1_ballpoint_pen")]
+transform = Transform3D(0.5446, 0, 0.8387, 0, 1, 0, -0.8387, 0, 0.5446, 0.050, 0.83, -2.180)
+
+[node name="Ruler" parent="Props" instance=ExtResource("s2_ruler")]
+transform = Transform3D(-0.0698, 0, 0.9976, 0, 1, 0, -0.9976, 0, -0.0698, 1.850, 0.83, -2.180)
+
+[node name="Scissors" parent="Props" instance=ExtResource("s3_scissors")]
+transform = Transform3D(-0.6561, 0, 0.7547, 0, 1, 0, -0.7547, 0, -0.6561, -1.750, 0.83, 0.220)
+
+[node name="Compass" parent="Props" instance=ExtResource("s4_compass")]
+transform = Transform3D(-0.9781, 0, 0.2079, 0, 1, 0, -0.2079, 0, -0.9781, 0.050, 0.83, 0.220)
+
+[node name="Stapler" parent="Props" instance=ExtResource("s5_stapler")]
+transform = Transform3D(-0.9063, 0, -0.4226, 0, 1, 0, 0.4226, 0, -0.9063, 1.850, 0.83, 0.220)
+
+[node name="Eraser" parent="Props" instance=ExtResource("s6_eraser")]
+transform = Transform3D(-0.4695, 0, -0.8829, 0, 1, 0, 0.8829, 0, -0.4695, -1.750, 0.83, 2.620)
+
+[node name="PencilCase" parent="Props" instance=ExtResource("s7_pencil_case")]
+transform = Transform3D(0.1564, 0, -0.9877, 0, 1, 0, 0.9877, 0, 0.1564, 0.050, 0.83, 2.620)
+
+[node name="Pencil2" parent="Props" instance=ExtResource("s0_pencil")]
+transform = Transform3D(0.7193, 0, -0.6947, 0, 1, 0, 0.6947, 0, 0.7193, 1.850, 0.83, 2.620)
 
 [node name="Hands" type="Node3D" parent="."]
 

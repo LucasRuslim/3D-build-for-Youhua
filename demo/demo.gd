@@ -2,7 +2,8 @@ extends Node3D
 ## Demo / test level for the classroom furniture props.
 ##
 ##   Mouse    move your hand            LMB  grab / throw
-##   RMB      drop                      Space  shockwave (host only)
+##   RMB      drop                      E / MMB  stab or swing held stationery
+##   Space    shockwave (host only)
 ##   F1       host a LAN/online game    F2   join (default 127.0.0.1)
 ##   R        reset furniture (host)
 ##
@@ -115,5 +116,5 @@ func _reset() -> void:
 
 
 func _set_status(text: String) -> void:
-	status_label.text = "%s   (peer %d)\nLMB grab/throw  RMB drop  Space shockwave  R reset  F1 host  F2 join" \
+	status_label.text = "%s   (peer %d)\nLMB grab/throw  RMB drop  E attack  Space shockwave  R reset  F1 host  F2 join" \
 			% [text, multiplayer.get_unique_id()]

@@ -82,6 +82,13 @@ func drop() -> void:
 		prop.request_drop()
 
 
+## Melee attack with the held item, if it is a weapon (e.g. StationeryWeapon).
+func attack() -> void:
+	var prop := held_prop()
+	if prop and prop.has_method("request_attack"):
+		prop.call("request_attack")
+
+
 func toggle_grab_throw() -> void:
 	if held_prop():
 		throw()

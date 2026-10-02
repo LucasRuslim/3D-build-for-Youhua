@@ -78,6 +78,11 @@ var _last_throw_time := -1000.0
 var _impact_velocity := Vector3.ZERO
 var _recent_hits := {}  # collider instance id -> time of last reported hit
 var _sweep_hit := KinematicCollision3D.new()
+# Where the current hit happened, for subclasses (e.g. a pencil sticking into
+# a wall). For sweep hits: how far the body still had to travel to touch,
+# and the surface normal. Zero when the hit came from a real contact.
+var _hit_travel := Vector3.ZERO
+var _hit_normal := Vector3.ZERO
 
 
 func _ready() -> void:
@@ -339,6 +344,8 @@ func _follow_net_state(delta: float) -> void:
 func _on_body_entered(body: Node) -> void:
 	if not _simulating or body == _ignored_body:
 		return
+	_hit_travel = Vector3.ZERO
+	_hit_normal = Vector3.ZERO
 	var impact := _impact_velocity
 	if body is RigidBody3D:
 		impact -= (body as RigidBody3D).linear_velocity
@@ -362,6 +369,8 @@ func _sweep_for_impacts(delta: float) -> void:
 			rel -= (body as RigidBody3D).linear_velocity
 		# Only the speed going into the surface hurts, not grazing.
 		var into := absf(rel.dot(_sweep_hit.get_normal()))
+		_hit_travel = _sweep_hit.get_travel()
+		_hit_normal = _sweep_hit.get_normal()
 		_report_hit(body, maxf(into, rel.length() * 0.5))
 
 
@@ -376,10 +385,16 @@ func _report_hit(body: Node, impact_speed: float) -> bool:
 		_recent_hits.clear()
 	_recent_hits[id] = now
 	var thrower := _last_thrower if now - _last_throw_time <= thrower_credit_time else 0
+	_deliver_hit(body, impact_speed, thrower)
+	return true
+
+
+## Called on the authority for every impact that counts. Subclasses (e.g.
+## StationeryWeapon) override this to turn impacts into weapon damage.
+func _deliver_hit(body: Node, impact_speed: float, thrower: int) -> void:
 	hit.emit(body, impact_speed, thrower)
 	if body.has_method("on_prop_hit"):
 		body.call("on_prop_hit", self, impact_speed, thrower)
-	return true
 
 
 func _approx_radius() -> float:
