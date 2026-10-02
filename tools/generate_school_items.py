@@ -60,8 +60,8 @@ def make_textures() -> dict[str, Path]:
     seam = np.zeros((H, W), bool)
     w = 0.018
     seam |= np.abs(d[..., 1]) < w                      # equator
-    seam |= np.abs(d[..., 2]) < w                      # great circle through the poles
-    for sx in (1, -1):                                 # the two curved side seams
+    seam |= np.abs(d[..., 0]) < w                      # middle line, half-way between the curves
+    for sx in (1, -1):                                 # the two curved side seams, around +-X
         seam |= np.abs(d[..., 0] * sx - math.cos(math.radians(48))) < w * 1.1
     pebble = periodic_noise(W, 0.9, 21)[:H, :W]
     base = np.array((214, 98, 30), float)
