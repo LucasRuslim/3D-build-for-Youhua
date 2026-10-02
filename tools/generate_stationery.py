@@ -382,15 +382,18 @@ ITEMS = [
 ]
 
 
-def write_scene(fname: str, node: str, mass: float, lo, hi, settings: dict) -> None:
+def write_scene(fname: str, node: str, mass: float, lo, hi, settings: dict, out: Path = OUT,
+                script: str = "stationery_weapon.gd", extra_synced: tuple = ()) -> None:
+    """Write a StationeryWeapon-style rigid body scene into out/scenes/."""
+    res = "res://" + out.relative_to(ROOT).as_posix()
     size = np.maximum(hi - lo, 0.016)  # thin, light boxes are unstable in Godot physics
     centre = (hi + lo) / 2
     f = lambda v: f"{v + 0.0:.5g}"
     lines = [
         "[gd_scene load_steps=6 format=3]",
         "",
-        '[ext_resource type="Script" path="res://assets/stationery/scripts/stationery_weapon.gd" id="1_script"]',
-        f'[ext_resource type="PackedScene" path="res://assets/stationery/models/{fname}.glb" id="2_model"]',
+        f'[ext_resource type="Script" path="{res}/scripts/{script}" id="1_script"]',
+        f'[ext_resource type="PackedScene" path="{res}/models/{fname}.glb" id="2_model"]',
         "",
         '[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_item"]',
         "friction = 0.7",
@@ -401,7 +404,7 @@ def write_scene(fname: str, node: str, mass: float, lo, hi, settings: dict) -> N
         "",
         '[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_item"]',
     ]
-    for i, p in enumerate(["net_position", "net_rotation", "net_linear_velocity", "holder_peer_id"]):
+    for i, p in enumerate(["net_position", "net_rotation", "net_linear_velocity", "holder_peer_id", *extra_synced]):
         lines += [f'properties/{i}/path = NodePath(".:{p}")', f"properties/{i}/spawn = true",
                   f"properties/{i}/replication_mode = 2"]
     lines += [
@@ -432,7 +435,8 @@ def write_scene(fname: str, node: str, mass: float, lo, hi, settings: dict) -> N
         'replication_config = SubResource("SceneReplicationConfig_item")',
         "",
     ]
-    (OUT / "scenes" / f"{fname}.tscn").write_text("\n".join(lines))
+    (out / "scenes").mkdir(parents=True, exist_ok=True)
+    (out / "scenes" / f"{fname}.tscn").write_text("\n".join(lines))
 
 
 def main() -> None:

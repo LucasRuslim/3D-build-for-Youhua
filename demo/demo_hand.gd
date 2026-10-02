@@ -47,12 +47,20 @@ func _process(_delta: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	if not is_multiplayer_authority():
 		return
-	if event is InputEventMouseButton and event.pressed:
-		if event.button_index == MOUSE_BUTTON_LEFT:
+	if event is InputEventMouseButton:
+		if event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
 			holder.toggle_grab_throw()
-		elif event.button_index == MOUSE_BUTTON_RIGHT:
+		elif event.pressed and event.button_index == MOUSE_BUTTON_RIGHT:
 			holder.drop()
 		elif event.button_index == MOUSE_BUTTON_MIDDLE:
-			holder.attack()
-	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_E:
+			_attack_button(event.pressed)
+	elif event is InputEventKey and not event.echo and event.keycode == KEY_E:
+		_attack_button(event.pressed)
+
+
+# Press = stab / swing / start drawing a bow; release = shoot the bow.
+func _attack_button(pressed: bool) -> void:
+	if pressed:
 		holder.attack()
+	else:
+		holder.attack_release()

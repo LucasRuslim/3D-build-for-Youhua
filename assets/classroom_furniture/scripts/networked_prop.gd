@@ -179,7 +179,7 @@ func _rpc_pickup() -> void:
 	if not is_multiplayer_authority():
 		return
 	var peer := multiplayer.get_remote_sender_id()
-	if holder_peer_id != 0 or find_prop_held_by(get_tree(), peer) != null:
+	if is_held() or find_prop_held_by(get_tree(), peer) != null:
 		return
 	var holder := find_holder(get_tree(), peer)
 	if holder == null:

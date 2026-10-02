@@ -68,6 +68,18 @@ func _initialize() -> void:
 				"server: client's pencil stab hit the dummy (%s)" % [dummy.hits])
 		check(pencil.is_stuck() and absf(pencil.global_position.x - 6.85) < 0.3,
 				"server: thrown pencil stuck in the east wall (x=%.2f)" % pencil.global_position.x)
+		# Archery: the client loads Arrow0 into the bow and shoots the west wall.
+		var arrow: Arrow = demo.get_node("Props/Arrow0")
+		var arrow_hits := []
+		arrow.weapon_hit.connect(func(body, dmg, attacker, kind): arrow_hits.append([body.name, dmg, attacker, kind]))
+		t = 0.0
+		while t < 15.0 and not arrow.is_stuck():
+			await seconds(0.1)
+			t += 0.1
+		check(arrow.is_stuck() and absf(arrow.global_position.x + 6.5) < 0.4,
+				"server: client's arrow stuck in the west wall (x=%.2f)" % arrow.global_position.x)
+		check(arrow_hits.any(func(h): return h[3] == "shot" and h[2] == client_id and h[1] > 40.0),
+				"server: arrow hit credited to the client as a shot (%s)" % [arrow_hits])
 		await seconds(1.0)
 	else:
 		check(demo.join("127.0.0.1") == OK, "client: joining")
@@ -142,6 +154,31 @@ func _initialize() -> void:
 		await seconds(1.5)
 		check(pencil.holder_peer_id == 0 and absf(pencil.global_position.x - 6.85) < 0.3,
 				"client: sees the pencil stuck in the wall (x=%.2f)" % pencil.global_position.x)
+
+		# Archery: pick up the bow, load an arrow, draw and shoot the west wall.
+		var bow: Bow = demo.get_node("Props/Bow")
+		var arrow: Arrow = demo.get_node("Props/Arrow0")
+		hand.global_transform = Transform3D(Basis.IDENTITY, bow.global_position + Vector3(0, 0.5, 0.3))
+		await seconds(0.5)
+		check(hand.holder.try_grab(), "client: bow grab requested")
+		await seconds(0.5)
+		check(bow.holder_peer_id == me, "client: holding the bow")
+		hand.global_transform = Transform3D(Basis.IDENTITY, arrow.global_position + Vector3(0.05, 0.5, 0.2))
+		await seconds(0.5)
+		check(hand.holder.try_grab(), "client: arrow collect requested")
+		await seconds(0.5)
+		check(bow.arrow_count == 1 and arrow.bow_state == Arrow.BowState.NOCKED,
+				"client: sees the arrow loaded on the string")
+		hand.global_transform = Transform3D(Basis.looking_at(Vector3.LEFT, Vector3.UP), Vector3(-4.0, 1.3, 5.0))
+		await seconds(0.5)
+		hand.holder.attack()
+		await seconds(0.5)
+		check(bow.draw_amount > 0.3, "client: sees the string being drawn (%.2f)" % bow.draw_amount)
+		await seconds(0.5)
+		hand.holder.attack_release()
+		await seconds(1.5)
+		check(bow.arrow_count == 0 and arrow.bow_state == Arrow.BowState.FREE and absf(arrow.global_position.x + 6.5) < 0.4,
+				"client: sees the arrow stuck in the west wall (x=%.2f)" % arrow.global_position.x)
 
 	print("RESULT[%s]: %s (%d failures)" % [role, "OK" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)

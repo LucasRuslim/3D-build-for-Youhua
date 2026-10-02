@@ -1,8 +1,10 @@
-[gd_scene load_steps=20 format=3]
+[gd_scene load_steps=22 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_desk.tscn" id="1_desk"]
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_chair.tscn" id="2_chair"]
 [ext_resource type="Script" path="res://demo/demo.gd" id="3_demo"]
+[ext_resource type="PackedScene" path="res://assets/archery/scenes/bow.tscn" id="a0_bow"]
+[ext_resource type="PackedScene" path="res://assets/archery/scenes/arrow.tscn" id="a1_arrow"]
 [ext_resource type="PackedScene" path="res://assets/stationery/scenes/pencil.tscn" id="s0_pencil"]
 [ext_resource type="PackedScene" path="res://assets/stationery/scenes/ballpoint_pen.tscn" id="s1_ballpoint_pen"]
 [ext_resource type="PackedScene" path="res://assets/stationery/scenes/ruler.tscn" id="s2_ruler"]
@@ -180,6 +182,24 @@ transform = Transform3D(0.1564, 0, -0.9877, 0, 1, 0, 0.9877, 0, 0.1564, 0.050, 0
 
 [node name="Pencil2" parent="Props" instance=ExtResource("s0_pencil")]
 transform = Transform3D(0.7193, 0, -0.6947, 0, 1, 0, 0.6947, 0, 0.7193, 1.850, 0.83, 2.620)
+
+[node name="Bow" parent="Props" instance=ExtResource("a0_bow")]
+transform = Transform3D(0, -1, 0, 1, 0, 0, 0, 0, 1, -4.0, 0.06, 4.6)
+
+[node name="Arrow0" parent="Props" instance=ExtResource("a1_arrow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.30, 0.05, 5.4)
+
+[node name="Arrow1" parent="Props" instance=ExtResource("a1_arrow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.18, 0.05, 5.4)
+
+[node name="Arrow2" parent="Props" instance=ExtResource("a1_arrow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.06, 0.05, 5.4)
+
+[node name="Arrow3" parent="Props" instance=ExtResource("a1_arrow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.94, 0.05, 5.4)
+
+[node name="Arrow4" parent="Props" instance=ExtResource("a1_arrow")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -3.82, 0.05, 5.4)
 
 [node name="Hands" type="Node3D" parent="."]
 

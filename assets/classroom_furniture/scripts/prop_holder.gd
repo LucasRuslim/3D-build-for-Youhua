@@ -61,7 +61,14 @@ func find_grab_target() -> NetworkedProp:
 
 
 func try_grab() -> bool:
-	if held_prop() != null:
+	var held := held_prop()
+	if held != null:
+		# Holding something that can take the target in (a bow collecting
+		# arrows)? Then grabbing loads it instead.
+		var target := find_grab_target()
+		if target and held.has_method("can_collect") and held.call("can_collect", target):
+			held.call("request_collect", target)
+			return true
 		return false
 	var prop := find_grab_target()
 	if prop == null:
@@ -83,15 +90,28 @@ func drop() -> void:
 
 
 ## Melee attack with the held item, if it is a weapon (e.g. StationeryWeapon).
+## Call on button press. With a loaded bow this starts drawing it.
 func attack() -> void:
 	var prop := held_prop()
 	if prop and prop.has_method("request_attack"):
 		prop.call("request_attack")
 
 
+## Call when the attack button is released: a drawn bow shoots.
+func attack_release() -> void:
+	var prop := held_prop()
+	if prop and prop.has_method("request_release"):
+		prop.call("request_release")
+
+
 func toggle_grab_throw() -> void:
-	if held_prop():
-		throw()
+	var held := held_prop()
+	if held:
+		var target := find_grab_target()
+		if target and held.has_method("can_collect") and held.call("can_collect", target):
+			try_grab()  # e.g. load a nearby arrow into the bow
+		else:
+			throw()
 	else:
 		try_grab()
 

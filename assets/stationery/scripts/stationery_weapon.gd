@@ -8,8 +8,8 @@ extends NetworkedProp
 ## - request_attack(): melee attack with the held item ("stab" or "swing").
 ## - Thrown hits deal damage too.
 ## - Damage goes to the hit body's on_weapon_hit(weapon, damage,
-##   attacker_peer_id, kind) if it has one (kind is "stab", "swing" or
-##   "throw"), otherwise to on_prop_hit(prop, impact_speed, thrower) like
+##   attacker_peer_id, kind) if it has one (kind is "stab", "swing", "throw",
+##   or "shot" for arrows fired from a bow), otherwise to on_prop_hit(prop, impact_speed, thrower) like
 ##   furniture. The `weapon_hit` signal fires on the host either way.
 ##
 ## Model convention: the grip is at the origin and the business end (tip /
@@ -46,13 +46,18 @@ enum AttackStyle { STAB, SWING }
 var _last_attack := -1000.0
 var _attack_t := -1.0  # animation time since the attack started, < 0 = idle
 var _stuck := false
+# The `kind` reported for impacts while flying ("throw", or "shot" for arrows
+# fired from a bow).
+var _throw_kind := "throw"
 
 const ATTACK_ANIM_TIME := 0.18
 
 
 func _ready() -> void:
 	super()
-	picked_up.connect(func(_peer): _stuck = false)
+	picked_up.connect(func(_peer):
+		_stuck = false
+		_throw_kind = "throw")
 
 
 func _physics_process(delta: float) -> void:
@@ -179,8 +184,8 @@ func _deliver_hit(body: Node, impact_speed: float, thrower: int) -> void:
 	if tip_first:
 		damage *= tip_first_bonus
 	hit.emit(body, impact_speed, thrower)
-	weapon_hit.emit(body, damage, thrower, "throw")
-	_send_damage(body, damage, thrower, "throw", impact_speed)
+	weapon_hit.emit(body, damage, thrower, _throw_kind)
+	_send_damage(body, damage, thrower, _throw_kind, impact_speed)
 	if tip_first and impact_speed >= stick_min_speed and body is StaticBody3D:
 		_stick(body)
 

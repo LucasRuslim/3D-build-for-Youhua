@@ -1,9 +1,10 @@
 # Classroom props for a Godot 4 brawl game
 
-A green plastic school desk and chair, modelled on the reference video, plus
-eight pieces of stationery that work as weapons. Everything is a ready-to-use
-physics prop: you can push it, pick it up and throw it, the stationery can also
-stab or swing, and it all stays in sync in online or LAN multiplayer.
+A green plastic school desk and chair, modelled on the reference video, eight
+pieces of stationery that work as weapons, and a bow with arrows. Everything is
+a ready-to-use physics prop: you can push it, pick it up and throw it, the
+weapons can also stab, swing or shoot, and it all stays in sync in online or LAN
+multiplayer.
 
 ![Preview renders](docs/preview_sheet.jpg)
 ![Demo: shockwave sending the classroom flying](docs/demo_shockwave.jpg)
@@ -171,17 +172,56 @@ All of these are Inspector settings on each item, so you can rebalance without
 touching code. Attacks are requested by the holder and resolved on the host,
 like pickups and throws.
 
+## Bow and arrows
+
+![Bow at rest, at full draw, and an arrow](docs/archery_preview.jpg)
+
+`assets/archery/` has a recurve bow and an arrow. They are separate pickups
+that work together. It uses the scripts in `assets/classroom_furniture/` and
+`assets/stationery/`, so copy all three folders.
+
+**How it plays:**
+- **Load:** pick up the bow, then press grab near an arrow. The arrow goes into
+  the bow instead of your hand. A bow carries up to 12 arrows: one sits on the
+  string, the rest are stowed (hidden).
+- **Shoot:** hold attack to draw (full draw takes 0.7 s), release to shoot. A
+  full draw fires at 40 m/s for about 48 damage; a quick tap fires at about
+  12 m/s for about 15.
+- **Arrows:** they fly tip-first, stick into walls and the floor, and can be
+  collected straight back into the bow from there. Hits are reported with kind
+  `"shot"` and credited to the archer.
+- **Empty bow:** attack swings it as a club (9 damage).
+- **Dropping or throwing the bow** spills the arrows it carries.
+- **An arrow on its own** is a small pointy weapon: stab (8 damage) or throw it
+  like a dart.
+
+**Wiring:** the bow needs the attack button's *release* as well:
+
+```gdscript
+if event.is_action_pressed("attack"): $Hands.attack()           # draw / stab / swing
+if event.is_action_released("attack"): $Hands.attack_release()  # shoot
+```
+
+Grab (`$Hands.try_grab()` or `toggle_grab_throw()`) already loads arrows when
+you're holding the bow. Damage arrives through the same
+`on_weapon_hit(weapon, damage, attacker_peer_id, kind)`.
+
+Bow settings in the Inspector: `max_arrows`, `shoot_speed`, `min_draw`,
+`draw_time`, `draw_length`, `collect_range`. Arrow damage per m/s is the
+arrow's `throw_damage_per_speed`.
+
 ## Try the demo
 
 Open the folder in Godot 4.3+ and press F5. There's a piece of stationery on
-every desk.
+every desk, and a bow with 5 arrows on the floor at the front left.
 
 | Input | Action |
 |---|---|
 | Mouse | Move your hand (coloured ball) |
 | Left mouse button | Grab or throw |
 | Right mouse button | Drop |
-| E or middle mouse button | Stab or swing the held stationery |
+| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot |
+| Left mouse button near an arrow (holding the bow) | Load the arrow |
 | Space | Shockwave |
 | R | Reset furniture |
 | F1 | Host on port 7777 |
@@ -196,6 +236,7 @@ To test across your LAN, run one copy with `-- --host` and another with
 godot --headless --path . --import
 godot --headless --path . --script res://tests/physics_test.gd      # offline
 godot --headless --path . --script res://tests/stationery_test.gd   # offline
+godot --headless --path . --script res://tests/archery_test.gd      # offline
 godot --headless --path . --script res://tests/net_test.gd -- server &
 godot --headless --path . --script res://tests/net_test.gd -- client  # ENet localhost
 ```
@@ -210,11 +251,19 @@ grabbed, stabs or swings once per cooldown for its listed damage, deals damage
 when thrown at a wall and at a character, and (pointy items) sticks into the
 wall and can be pulled back out.
 
+The archery test loads three arrows into the bow, checks only one is on the
+string and that nobody else can take them, shoots at full draw (40 m/s, sticks
+tip-first into a wall 12 m away), shoots a quick tap at a character, collects
+the stuck arrow back, spills arrows when the bow is dropped, swings the empty
+bow, and stabs with an arrow by hand.
+
 In the network test a client's character shoves a chair through the host, then
 the client grabs a chair and throws it; the host sees the pickup, the flight
 and hits credited to that client. Finally the client grabs a pencil off a desk,
 stabs a target on the host and throws the pencil into a wall, where both sides
-see it stuck.
+see it stuck. Last, the client picks up the bow, loads an arrow, draws and
+shoots it into a wall; both sides see the draw and the stuck arrow, and the
+host credits the shot to the client.
 
 ## Rebuilding the assets
 
@@ -223,4 +272,5 @@ pip install numpy pillow
 python3 tools/generate_assets.py   # models + textures
 python3 tools/make_scenes.py       # prop scenes / colliders
 python3 tools/generate_stationery.py   # stationery models, textures, scenes
+python3 tools/generate_archery.py      # bow and arrow models, scenes
 ```
