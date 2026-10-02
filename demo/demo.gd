@@ -5,7 +5,9 @@ extends Node3D
 ##   RMB      drop                      E / MMB  stab or swing held stationery;
 ##                                      with the bow: hold to draw, release to shoot
 ##                                      with a fire extinguisher: hold to spray foam
-##   (holding the bow, LMB near an arrow loads it)
+##                                      with a drink: drink it; ball bucket: volley
+##   F        use (vending machine)
+##   (holding the bow, LMB near an arrow loads it; same for the ball bucket and balls)
 ##   Space    shockwave (host only)
 ##   F1       host a LAN/online game    F2   join (default 127.0.0.1)
 ##   R        reset furniture (host)
@@ -119,5 +121,5 @@ func _reset() -> void:
 
 
 func _set_status(text: String) -> void:
-	status_label.text = "%s   (peer %d)\nLMB grab/throw  RMB drop  E attack  Space shockwave  R reset  F1 host  F2 join" \
+	status_label.text = "%s   (peer %d)\nLMB grab/throw  RMB drop  E attack/drink  F use  Space shockwave  R reset  F1 host  F2 join" \
 			% [text, multiplayer.get_unique_id()]

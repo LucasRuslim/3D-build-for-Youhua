@@ -17,6 +17,8 @@ extends NetworkedProp
 
 ## Emitted on the host for every melee or thrown hit that deals damage.
 signal weapon_hit(body: Node, damage: float, attacker_peer_id: int, kind: String)
+## Emitted on the host when a melee attack bats a loose prop away.
+signal batted(prop: Node, attacker_peer_id: int)
 
 enum AttackStyle { STAB, SWING }
 
@@ -43,6 +45,17 @@ enum AttackStyle { STAB, SWING }
 ## Use continuous collision detection while flying fast, so thin, fast items
 ## don't pass through things. It kills bounces, so balls turn it off.
 @export var ccd_in_flight := true
+## Use continuous collision detection all the time. Tiny balls need it: in
+## Godot Physics a 4 cm sphere otherwise falls through the floor on a bounce.
+@export var ccd_always := false
+## Rackets and paddles: a melee attack launches loose light props in front
+## (balls, shuttlecocks, a thrown pencil...) along the aim at this speed
+## (m/s), and their hits count as the attacker's. 0 = off.
+@export var bat_power := 0.0
+## Heaviest prop that can be batted (kg).
+@export var bat_max_mass := 1.0
+## Fly nose-first like a shuttlecock, without sticking into things.
+@export var aerodynamic := false
 
 @export_group("Pointy")
 ## Fly tip-first like a dart and stick into static surfaces (walls, floor).
@@ -83,8 +96,8 @@ func _physics_process(delta: float) -> void:
 	# Continuous collision detection stops fast throws from passing through
 	# things, but on small, light items it also makes resting contact jittery
 	# (they can sink into a desk). So only use it while flying fast.
-	continuous_cd = ccd_in_flight and linear_velocity.length() > 4.0
-	if pointy and not freeze and holder_peer_id == 0:
+	continuous_cd = ccd_always or (ccd_in_flight and linear_velocity.length() > 4.0)
+	if (pointy or aerodynamic) and not freeze and holder_peer_id == 0:
 		_steer_tip_into_flight(delta)
 
 
@@ -139,6 +152,34 @@ func _rpc_attack() -> void:
 		if body is RigidBody3D and not (body is NetworkedProp and body.is_held()):
 			var push := aim * swing_knockback * (0.5 if kind == "stab" else 1.0)
 			(body as RigidBody3D).apply_central_impulse(push * minf((body as RigidBody3D).mass, 10.0) * 0.2)
+	if bat_power > 0.0:
+		_bat_props(origin, aim, peer)
+
+
+# Launch loose light props in front of the swing along the aim.
+func _bat_props(origin: Vector3, aim: Vector3, peer: int) -> void:
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsShapeQueryParameters3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = maxf(melee_range * 0.6, 0.4)
+	query.shape = sphere
+	query.transform = Transform3D(Basis.IDENTITY, origin + aim * melee_range * 0.6)
+	var exclude: Array[RID] = [get_rid()]
+	query.exclude = exclude
+	var done := {}
+	for r in space.intersect_shape(query, 64):
+		var p := r.collider as NetworkedProp
+		if p == null or done.has(p) or p.is_held() or p.freeze or p.mass > bat_max_mass:
+			continue
+		done[p] = true
+		var speed := maxf(bat_power, p.linear_velocity.length() * 1.2)
+		p.sleeping = false
+		p.linear_velocity = (aim + Vector3.UP * 0.12).normalized() * speed
+		p.credit_throw(peer)
+		if is_instance_valid(_ignored_body):
+			p._set_ignored_body(_ignored_body)
+			p._forget_ignored_body_later()
+		batted.emit(p, peer)
 
 
 func _melee_targets(origin: Vector3, aim: Vector3, exclude: Array[RID]) -> Array:
@@ -169,6 +210,48 @@ func _melee_targets(origin: Vector3, aim: Vector3, exclude: Array[RID]) -> Array
 			if _is_melee_target(body) and not found.has(body):
 				found.append(body)
 	return found
+
+
+## Bodies in a cone in front of `origin` with a clear line of sight to their
+## middle: for sprays and volleys. Static bodies are never included.
+func cone_targets(origin: Vector3, aim: Vector3, reach: float, angle_deg: float, exclude: Array[RID]) -> Array:
+	var space := get_world_3d().direct_space_state
+	var query := PhysicsShapeQueryParameters3D.new()
+	var sphere := SphereShape3D.new()
+	sphere.radius = reach
+	query.shape = sphere
+	query.transform = Transform3D(Basis.IDENTITY, origin)
+	query.exclude = exclude
+	var cos_max := cos(deg_to_rad(angle_deg))
+	var done := {}
+	var out: Array = []
+	for r in space.intersect_shape(query, 256):  # a busy classroom has lots of bodies in range
+		var body: Node3D = r.collider
+		if body == null or done.has(body) or body is StaticBody3D:
+			continue
+		done[body] = true
+		var target := body_center(body)
+		var to := target - origin
+		if to.length() > reach or to.normalized().dot(aim) < cos_max:
+			continue
+		var ray := PhysicsRayQueryParameters3D.create(origin, target)
+		ray.exclude = exclude
+		var hit := space.intersect_ray(ray)
+		if not hit.is_empty() and hit.collider != body:
+			continue  # behind a wall
+		out.append(body)
+	return out
+
+
+## Middle of a body's collision shapes (props have their origin on the floor).
+static func body_center(body: Node3D) -> Vector3:
+	var sum := Vector3.ZERO
+	var n := 0
+	for c in body.get_children():
+		if c is CollisionShape3D:
+			sum += c.global_position
+			n += 1
+	return sum / n if n > 0 else body.global_position
 
 
 func _is_melee_target(body: Node) -> bool:

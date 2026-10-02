@@ -1,8 +1,9 @@
 # Classroom props for a Godot 4 brawl game
 
 A green plastic school desk and chair, modelled on the reference video, eight
-pieces of stationery that work as weapons, a bow with arrows, and ten everyday
-school things to fight with, including a fire extinguisher that sprays foam. Everything is
+pieces of stationery that work as weapons, a bow with arrows, ten everyday
+school things to fight with (including a fire extinguisher that sprays foam),
+ping pong and badminton gear, and a vending machine that sells potions. Everything is
 a ready-to-use physics prop: you can push it, pick it up and throw it, the
 weapons can also stab, swing or shoot, and it all stays in sync in online or LAN
 multiplayer.
@@ -260,18 +261,97 @@ func apply_knockback(v: Vector3):
   Everyone within 2.5 m takes 10 damage (kind `"burst"`) and gets knocked
   back.
 
+## Ping pong and badminton
+
+![Paddle, racket, shuttlecock, ball, ball bucket](docs/sports_preview.jpg)
+
+`assets/sports/` (needs `classroom_furniture` and `stationery` too):
+
+| Item | What it does |
+|---|---|
+| Ping pong paddle | Swing (7 damage). **Bats** loose light things in front of it (balls, shuttlecocks, a thrown pencil...) back along your aim at 16 m/s; their hits count as yours |
+| Badminton racket | Longer swing (1.25 m, 6 damage), smashes things at 24 m/s |
+| Shuttlecock | Flies nose-first and slows down like a real one |
+| Ping pong ball | Tiny, very bouncy, throwable (does very little damage) |
+| Ball bucket | Attack fires a **volley of balls** in a cone. Everyone hit takes 2 damage and **falls asleep** for 2.5 s (`sleep` status effect). It uses 6 of its 30 balls per volley; hold the bucket and grab near loose balls to refill it. Nearly empty, it swings like a club |
+
+## Vending machine and potions
+
+![Vending machine](docs/vending_machine.jpg)
+![Water and potions](docs/drinks_preview.jpg)
+
+`assets/vending/` (needs `classroom_furniture` and `stationery` too). The
+machine is in the style of the photo, but deliberately without any real
+store's name, logo or stripe colours.
+
+**The machine:**
+- **Buying:** stand in front of it and call `$Hands.use()`. It drops a random
+  drink in front of the pickup tray. Water is the most common, sleep potions
+  the rarest; you can change the odds with `weights`, or pick one with
+  `request_use(index)`.
+- **Limits:** each player waits 2 seconds between buys, and it holds 24
+  drinks (`stock`, synced; −1 = unlimited).
+- **Networking:** dispensed drinks are created on the host and appear for
+  everyone through the machine's own `MultiplayerSpawner`, including players
+  who join later.
+
+**Drinks:** hold one and press attack to drink it (0.7 s), which empties the
+bottle. Throw a full one at something and it splashes everyone within 2.5 m.
+
+| Drink | Drink it | Throw it |
+|---|---|---|
+| Water (plastic bottle) | heal 15 | leaves a **slippery puddle** (`slip`) for 15 s |
+| Health potion "HP+" | heal 50 | heals everyone nearby 25 |
+| Speed "ZOOM!" | `speed` ×1.6 for 8 s | everyone nearby ×1.6 for 4 s |
+| Strength "POWER" | `strength` ×1.5 for 10 s | everyone nearby for 5 s |
+| Shield "GUARD" | `shield` ×0.5 damage taken, 10 s | everyone nearby for 5 s |
+| Sleep "DREAM" | you fall asleep for 4 s (a prank drink) | everyone nearby sleeps 3 s |
+| Jump "HOP!" | `jump` ×1.5 for 10 s | everyone nearby for 5 s |
+
+Empty bottles are light clubs. **To remove a potion**, delete its scene from
+`assets/vending/scenes/` and remove it from the machine's `products` list and
+its `MultiplayerSpawner`. Or delete its line in `DRINKS` in
+`tools/generate_vending.py` and regenerate.
+
+### Status effects (sleep, slip, speed...)
+
+Add a **`StatusEffects`** node (`assets/classroom_furniture/scripts/status_effects.gd`)
+as a child of your player. Effects are decided by the host and synced to
+everyone. Your player code decides what each one does:
+
+```gdscript
+@onready var fx: StatusEffects = $StatusEffects
+
+func _physics_process(delta):
+    if fx.is_active(&"sleep"): return                 # can't move or act
+    var speed := run_speed * fx.strength_of(&"speed", 1.0)
+    if fx.is_active(&"slip"): pass                     # e.g. keep sliding, ignore steering
+    ...
+
+func take_damage(amount):
+    health -= amount * fx.strength_of(&"shield", 1.0)
+```
+
+Healing goes to your player's `heal(amount)` method if it has one (otherwise
+the node's `healed` signal fires). Prefer your own system? Give your player
+`apply_status_effect(effect, duration, strength, source_peer_id)` and that's
+used instead.
+
 ## Try the demo
 
 Open the folder in Godot 4.3+ and press F5. There's a piece of stationery on
 every desk, a bow with 5 arrows on the floor at the front left, fire
-extinguishers by the side walls, and the other school items around the room.
+extinguishers by the side walls, the other school items around the room, a
+vending machine at the front, a ping pong corner (front right) and a badminton
+corner (left).
 
 | Input | Action |
 |---|---|
 | Mouse | Move your hand (coloured ball) |
 | Left mouse button | Grab or throw |
 | Right mouse button | Drop |
-| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot; with the fire extinguisher, hold to spray |
+| E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot; with the fire extinguisher, hold to spray; with a drink, drink it; with the ball bucket, fire a volley |
+| F | Use the vending machine |
 | Left mouse button near an arrow (holding the bow) | Load the arrow |
 | Space | Shockwave |
 | R | Reset furniture |
@@ -289,6 +369,7 @@ godot --headless --path . --script res://tests/physics_test.gd      # offline
 godot --headless --path . --script res://tests/stationery_test.gd   # offline
 godot --headless --path . --script res://tests/archery_test.gd      # offline
 godot --headless --path . --script res://tests/school_items_test.gd # offline
+godot --headless --path . --script res://tests/sports_vending_test.gd # offline
 godot --headless --path . --script res://tests/net_test.gd -- server &
 godot --headless --path . --script res://tests/net_test.gd -- client  # ENet localhost
 ```
@@ -317,6 +398,17 @@ target in front, misses one outside the cone and one behind a wall, shoves a
 chair, and uses up foam; that the empty extinguisher swings; and that throwing
 it into a wall bursts and knocks back a bystander.
 
+The sports and vending test checks that every new item rests and can be picked
+up. For the sports gear: the paddle bats a ball into a player (credited to the
+batter), the ping pong ball bounces, the racket smashes a shuttlecock which turns
+nose-first and slows down, and the bucket's volley puts the player in front to
+sleep (not one outside the cone or behind a wall), uses balls, has a cooldown,
+wears off, refills from loose balls and swings when nearly empty. For vending:
+the machine sells a drink in front of its tray, has a per-player cooldown, sells
+a chosen product and stops when empty. For drinks: drinking heals or applies
+the effect and empties the bottle, a thrown water bottle leaves a puddle that
+makes players slip, and sleep and health potions splash everyone nearby.
+
 In the network test a client's character shoves a chair through the host, then
 the client grabs a chair and throws it; the host sees the pickup, the flight
 and hits credited to that client. Finally the client grabs a pencil off a desk,
@@ -325,7 +417,10 @@ see it stuck. Last, the client picks up the bow, loads an arrow, draws and
 shoots it into a wall; both sides see the draw and the stuck arrow, and the
 host credits the shot to the client. Then the client picks up a fire
 extinguisher and sprays a target on the host: both sides see the spray, and the
-host registers the foam hits and knockback for the client.
+host registers the foam hits and knockback for the client. Then the client
+buys a drink from the vending machine (both sides see it appear at the
+machine), drinks it, and fires a ball volley that puts a target to sleep. The
+sleep effect syncs from the host to the client.
 
 ## Rebuilding the assets
 
@@ -336,4 +431,6 @@ python3 tools/make_scenes.py       # prop scenes / colliders
 python3 tools/generate_stationery.py   # stationery models, textures, scenes
 python3 tools/generate_archery.py      # bow and arrow models, scenes
 python3 tools/generate_school_items.py # school item models, textures, scenes
+python3 tools/generate_sports.py       # ping pong / badminton models, scenes
+python3 tools/generate_vending.py      # vending machine, drinks, labels, scenes
 ```

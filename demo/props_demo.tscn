@@ -1,8 +1,14 @@
-[gd_scene load_steps=32 format=3]
+[gd_scene load_steps=38 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_desk.tscn" id="1_desk"]
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_chair.tscn" id="2_chair"]
 [ext_resource type="Script" path="res://demo/demo.gd" id="3_demo"]
+[ext_resource type="PackedScene" path="res://assets/sports/scenes/badminton_racket.tscn" id="sv_badminton_racket"]
+[ext_resource type="PackedScene" path="res://assets/sports/scenes/ball_bucket.tscn" id="sv_ball_bucket"]
+[ext_resource type="PackedScene" path="res://assets/sports/scenes/ping_pong_ball.tscn" id="sv_ping_pong_ball"]
+[ext_resource type="PackedScene" path="res://assets/sports/scenes/ping_pong_paddle.tscn" id="sv_ping_pong_paddle"]
+[ext_resource type="PackedScene" path="res://assets/sports/scenes/shuttlecock.tscn" id="sv_shuttlecock"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/vending_machine.tscn" id="sv_vending_machine"]
 [ext_resource type="PackedScene" path="res://assets/school_items/scenes/backpack.tscn" id="si_backpack"]
 [ext_resource type="PackedScene" path="res://assets/school_items/scenes/basketball.tscn" id="si_basketball"]
 [ext_resource type="PackedScene" path="res://assets/school_items/scenes/board_eraser.tscn" id="si_board_eraser"]
@@ -246,6 +252,51 @@ transform = Transform3D(0.1736, 0, 0.9848, 0, 1, 0, -0.9848, 0, 0.1736, 0.0, 0.0
 
 [node name="LunchTray" parent="Props" instance=ExtResource("si_lunch_tray")]
 transform = Transform3D(0.9063, 0, 0.4226, 0, 1, 0, -0.4226, 0, 0.9063, -2.8, 0.04, 4.2)
+
+[node name="PaddleA" parent="Props" instance=ExtResource("sv_ping_pong_paddle")]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 4.0, 0.03, 3.4)
+
+[node name="PaddleB" parent="Props" instance=ExtResource("sv_ping_pong_paddle")]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, 4.5, 0.03, 3.7)
+
+[node name="BallBucket" parent="Props" instance=ExtResource("sv_ball_bucket")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.1, 0.36, 3.3)
+
+[node name="PingPongBall0" parent="Props" instance=ExtResource("sv_ping_pong_ball")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.1, 0.04, 4.25)
+
+[node name="PingPongBall1" parent="Props" instance=ExtResource("sv_ping_pong_ball")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.319999999999999, 0.04, 4.4)
+
+[node name="PingPongBall2" parent="Props" instance=ExtResource("sv_ping_pong_ball")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.54, 0.04, 4.25)
+
+[node name="PingPongBall3" parent="Props" instance=ExtResource("sv_ping_pong_ball")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.76, 0.04, 4.4)
+
+[node name="PingPongBall4" parent="Props" instance=ExtResource("sv_ping_pong_ball")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 4.9799999999999995, 0.04, 4.25)
+
+[node name="PingPongBall5" parent="Props" instance=ExtResource("sv_ping_pong_ball")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 5.199999999999999, 0.04, 4.4)
+
+[node name="RacketA" parent="Props" instance=ExtResource("sv_badminton_racket")]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, -5.7, 0.03, 2.4)
+
+[node name="RacketB" parent="Props" instance=ExtResource("sv_badminton_racket")]
+transform = Transform3D(1, 0, 0, 0, 0, 1, 0, -1, 0, -5.2, 0.03, 2.7)
+
+[node name="Shuttlecock0" parent="Props" instance=ExtResource("sv_shuttlecock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.7, 0.05, 2.1)
+
+[node name="Shuttlecock1" parent="Props" instance=ExtResource("sv_shuttlecock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.55, 0.05, 2.1)
+
+[node name="Shuttlecock2" parent="Props" instance=ExtResource("sv_shuttlecock")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.4, 0.05, 2.1)
+
+[node name="VendingMachine" parent="." instance=ExtResource("sv_vending_machine")]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -4.6, 0, -6.44)
 
 [node name="Hands" type="Node3D" parent="."]
 

@@ -1,0 +1,40 @@
+[gd_scene load_steps=12 format=3]
+
+[ext_resource type="Script" path="res://assets/vending/scripts/vending_machine.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/vending/models/vending_machine.glb" id="2_model"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/water_bottle_plastic.tscn" id="p0"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/potion_health.tscn" id="p1"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/potion_speed.tscn" id="p2"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/potion_strength.tscn" id="p3"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/potion_shield.tscn" id="p4"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/potion_sleep.tscn" id="p5"]
+[ext_resource type="PackedScene" path="res://assets/vending/scenes/potion_jump.tscn" id="p6"]
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_body"]
+size = Vector3(0.95, 2.02, 0.8)
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_stock"]
+properties/0/path = NodePath(".:stock")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+
+[node name="VendingMachine" type="StaticBody3D"]
+script = ExtResource("1_script")
+products = Array[PackedScene]([ExtResource("p0"), ExtResource("p1"), ExtResource("p2"), ExtResource("p3"), ExtResource("p4"), ExtResource("p5"), ExtResource("p6")])
+weights = Array[float]([4.0, 2.0, 1.5, 1.2, 1.2, 1.0, 1.2])
+stock = 24
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 1.01, 0)
+shape = SubResource("BoxShape3D_body")
+
+[node name="Dispensed" type="Node3D" parent="."]
+
+[node name="Spawner" type="MultiplayerSpawner" parent="."]
+_spawnable_scenes = PackedStringArray("res://assets/vending/scenes/water_bottle_plastic.tscn", "res://assets/vending/scenes/potion_health.tscn", "res://assets/vending/scenes/potion_speed.tscn", "res://assets/vending/scenes/potion_strength.tscn", "res://assets/vending/scenes/potion_shield.tscn", "res://assets/vending/scenes/potion_sleep.tscn", "res://assets/vending/scenes/potion_jump.tscn")
+spawn_path = NodePath("../Dispensed")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_config = SubResource("SceneReplicationConfig_stock")

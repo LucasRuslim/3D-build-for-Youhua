@@ -90,7 +90,12 @@ func _ready() -> void:
 	contact_monitor = true
 	max_contacts_reported = max(max_contacts_reported, 4)
 	body_entered.connect(_on_body_entered)
-	_write_net_state()
+	if not is_multiplayer_authority() and net_position != Vector3.ZERO:
+		# Spawned at runtime (e.g. by a vending machine): the host already
+		# sent where it is, so start there.
+		global_transform = Transform3D(Basis(net_rotation), net_position)
+	else:
+		_write_net_state()
 	_update_mode(true)
 
 
@@ -120,6 +125,13 @@ func request_drop() -> void:
 
 func is_held() -> bool:
 	return holder_peer_id != 0
+
+
+## Count this prop's next hits as thrown by `peer` (e.g. after a racket bats
+## it). Host only.
+func credit_throw(peer: int) -> void:
+	_last_thrower = peer
+	_last_throw_time = _now()
 
 
 ## Shove the prop as if something moving at `push_velocity` ran into it at

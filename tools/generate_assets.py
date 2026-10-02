@@ -602,7 +602,8 @@ def write_glb(path: Path, name: str, parts: dict[str, MeshPart], tex: dict[str, 
               materials: dict[str, dict] | None = None) -> None:
     """Write a .glb. `materials` maps a part name to a spec dict with any of:
     color (sRGB 0-255), alpha, metallic, roughness, albedo_tex, normal_tex,
-    normal_scale, alpha_mode ("BLEND"/"MASK"), double_sided. Parts without a
+    normal_scale, alpha_mode ("BLEND"/"MASK"), double_sided, emissive (sRGB 0-255),
+    emissive_tex. Parts without a
     spec use the furniture materials below."""
     gltf: dict = {
         "asset": {"version": "2.0", "generator": "3D-build-for-Youhua/tools/generate_assets.py"},
@@ -669,6 +670,10 @@ def write_glb(path: Path, name: str, parts: dict[str, MeshPart], tex: dict[str, 
                 mat["alphaMode"] = spec["alpha_mode"]
             if spec.get("double_sided"):
                 mat["doubleSided"] = True
+            if "emissive" in spec:
+                mat["emissiveFactor"] = [srgb_to_linear(c) for c in spec["emissive"]]
+                if "emissive_tex" in spec:
+                    mat["emissiveTexture"] = {"index": texture(spec["emissive_tex"])}
         elif mat_name == "GreenPlastic":
             mat = {"name": mat_name, "pbrMetallicRoughness": {
                 "baseColorTexture": {"index": texture("plastic_green_albedo")},

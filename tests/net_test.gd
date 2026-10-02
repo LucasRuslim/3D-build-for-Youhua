@@ -25,6 +25,20 @@ func _initialize() -> void:
 	var role: String = OS.get_cmdline_user_args()[0]
 	var demo = load("res://demo/props_demo.tscn").instantiate()
 	root.add_child(demo)
+	# A sleepy target that exists on both peers (same path), so its
+	# StatusEffects sync from the host to the client.
+	var sleeper: CharacterBody3D = DummyTarget.new()
+	sleeper.name = "Sleeper"
+	var scs := CollisionShape3D.new()
+	scs.shape = CapsuleShape3D.new()
+	scs.shape.radius = 0.3
+	scs.shape.height = 1.8
+	sleeper.add_child(scs)
+	var sleeper_se := StatusEffects.new()
+	sleeper_se.name = "StatusEffects"
+	sleeper.add_child(sleeper_se)
+	sleeper.position = Vector3(5.1, 0.92, 0.0)
+	demo.add_child(sleeper)
 	await process_frame
 	var chair: NetworkedProp = demo.get_node("Props/Chair4")
 	var start := chair.global_position
@@ -96,6 +110,25 @@ func _initialize() -> void:
 		var foam: Array = foam_target.hits.filter(func(h): return h.kind == "spray" and h.attacker == client_id)
 		check(foam.size() >= 4 and not foam_target.knockbacks.is_empty(),
 				"server: client's foam hit the target %d times and pushed it back" % foam.size())
+		# Vending machine: the client buys a drink and drinks it.
+		var machine: VendingMachine = demo.get_node("VendingMachine")
+		var bought := []
+		var drank := []
+		machine.vended.connect(func(peer, item):
+			bought.append(peer)
+			item.drunk.connect(func(p, e): drank.append(p)))
+		t = 0.0
+		while t < 20.0 and drank.is_empty():
+			await seconds(0.1)
+			t += 0.1
+		check(bought == [client_id], "server: the client bought a drink (%s)" % [bought])
+		check(drank == [client_id], "server: the client drank it (%s)" % [drank])
+		# Ball bucket: the client's volley puts the shared Sleeper to sleep.
+		t = 0.0
+		while t < 15.0 and not sleeper_se.is_active(&"sleep"):
+			await seconds(0.1)
+			t += 0.1
+		check(sleeper_se.is_active(&"sleep"), "server: the client's volley put the sleeper to sleep")
 		await seconds(1.0)
 	else:
 		check(demo.join("127.0.0.1") == OK, "client: joining")
@@ -214,6 +247,49 @@ func _initialize() -> void:
 		await seconds(0.5)
 		check(not ext.spraying and ext.spray_charge < 0.95,
 				"client: spray stopped, foam left %.2f" % ext.spray_charge)
+
+		# Vending machine: buy a drink, pick it up, drink it.
+		hand.holder.drop()
+		await seconds(0.5)
+		var machine: VendingMachine = demo.get_node("VendingMachine")
+		var stock0 := machine.stock
+		hand.global_transform = Transform3D(Basis.IDENTITY, machine.get_use_position() + Vector3(0, 0, 0.4))
+		await seconds(0.5)
+		check(hand.holder.use(), "client: used the vending machine")
+		await seconds(1.5)
+		var dispensed: Node = machine.get_node("Dispensed")
+		check(dispensed.get_child_count() == 1 and machine.stock == stock0 - 1,
+				"client: sees the drink the host dispensed (stock %d)" % machine.stock)
+		if dispensed.get_child_count() == 1:
+			var drink: Drink = dispensed.get_child(0)
+			check(drink.global_position.distance_to(machine.global_position) < 1.5,
+					"client: the drink appears at the machine, not at the origin")
+			hand.global_transform = Transform3D(Basis.IDENTITY, drink.global_position + Vector3(0, 0.5, 0.3))
+			await seconds(0.5)
+			hand.holder.try_grab()
+			await seconds(0.5)
+			check(drink.holder_peer_id == me, "client: holding the drink")
+			hand.holder.attack()
+			await seconds(1.5)
+			check(not drink.full, "client: sees the bottle emptied after drinking")
+			hand.holder.drop()
+			await seconds(0.5)
+
+		# Ball bucket: volley at the shared Sleeper.
+		var bucket: BallBucket = demo.get_node("Props/BallBucket")
+		hand.global_transform = Transform3D(Basis.IDENTITY, bucket.global_position + Vector3(0, 0.4, 0.3))
+		await seconds(0.5)
+		hand.holder.try_grab()
+		await seconds(0.5)
+		check(bucket.holder_peer_id == me, "client: holding the ball bucket")
+		hand.global_transform = Transform3D(Basis.IDENTITY, Vector3(5.1, 1.2, 2.0))
+		await seconds(0.6)
+		var balls0 := bucket.balls
+		hand.holder.attack()
+		await seconds(0.6)
+		check(bucket.balls == balls0 - bucket.balls_per_volley, "client: sees the volley use balls (%d left)" % bucket.balls)
+		var se: StatusEffects = demo.get_node("Sleeper/StatusEffects")
+		check(se.is_active(&"sleep"), "client: sees the sleeper asleep (synced %s)" % [se.active_effects])
 
 	print("RESULT[%s]: %s (%d failures)" % [role, "OK" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)

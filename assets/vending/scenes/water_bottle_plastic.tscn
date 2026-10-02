@@ -1,0 +1,59 @@
+[gd_scene load_steps=6 format=3]
+
+[ext_resource type="Script" path="res://assets/vending/scripts/drink.gd" id="1_script"]
+[ext_resource type="PackedScene" path="res://assets/vending/models/water_bottle_plastic.glb" id="2_model"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_item"]
+friction = 0.7
+bounce = 0.2
+
+[sub_resource type="BoxShape3D" id="BoxShape3D_item"]
+size = Vector3(0.066396, 0.226, 0.066396)
+
+[sub_resource type="SceneReplicationConfig" id="SceneReplicationConfig_item"]
+properties/0/path = NodePath(".:net_position")
+properties/0/spawn = true
+properties/0/replication_mode = 2
+properties/1/path = NodePath(".:net_rotation")
+properties/1/spawn = true
+properties/1/replication_mode = 2
+properties/2/path = NodePath(".:net_linear_velocity")
+properties/2/spawn = true
+properties/2/replication_mode = 2
+properties/3/path = NodePath(".:holder_peer_id")
+properties/3/spawn = true
+properties/3/replication_mode = 2
+properties/4/path = NodePath(".:full")
+properties/4/spawn = true
+properties/4/replication_mode = 2
+
+[node name="PlasticWaterBottle" type="RigidBody3D"]
+mass = 0.5
+physics_material_override = SubResource("PhysicsMaterial_item")
+continuous_cd = false
+contact_monitor = true
+max_contacts_reported = 4
+script = ExtResource("1_script")
+max_pickup_distance = 1.5
+damage_min_speed = 3.0
+attack_style = 1
+melee_damage = 4.0
+melee_range = 0.8
+attack_cooldown = 0.45
+throw_speed = 13.0
+throw_spin = 7.0
+throw_damage_per_speed = 0.6
+liquid_color = Color(0.588, 0.804, 0.961, 1)
+heal_amount = 15.0
+makes_puddle = true
+
+[node name="Model" parent="." instance=ExtResource("2_model")]
+
+[node name="Collision" type="CollisionShape3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 0, 0.008, 0)
+shape = SubResource("BoxShape3D_item")
+
+[node name="MultiplayerSynchronizer" type="MultiplayerSynchronizer" parent="."]
+replication_interval = 0.033
+delta_interval = 0.033
+replication_config = SubResource("SceneReplicationConfig_item")

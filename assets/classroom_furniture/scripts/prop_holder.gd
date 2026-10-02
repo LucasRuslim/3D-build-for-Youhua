@@ -111,6 +111,25 @@ func attack_release() -> void:
 		prop.call("request_release")
 
 
+## Use the nearest usable thing within `reach` (e.g. a vending machine):
+## anything in the "usables" group with a request_use() method.
+func use() -> bool:
+	var best: Node3D = null
+	var best_d := INF
+	for node in get_tree().get_nodes_in_group(&"usables"):
+		if not (node is Node3D) or not node.has_method("request_use"):
+			continue
+		var at: Vector3 = node.call("get_use_position") if node.has_method("get_use_position") else node.global_position
+		var d := global_position.distance_to(at)
+		if d <= reach and d < best_d:
+			best_d = d
+			best = node
+	if best == null:
+		return false
+	best.call("request_use")
+	return true
+
+
 func toggle_grab_throw() -> void:
 	var held := held_prop()
 	if held:

@@ -56,6 +56,8 @@ func _unhandled_input(event: InputEvent) -> void:
 			_attack_button(event.pressed)
 	elif event is InputEventKey and not event.echo and event.keycode == KEY_E:
 		_attack_button(event.pressed)
+	elif event is InputEventKey and event.pressed and not event.echo and event.keycode == KEY_F:
+		holder.use()  # e.g. buy a drink from the vending machine
 
 
 # Press = stab / swing / start drawing a bow; release = shoot the bow.

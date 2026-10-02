@@ -3,15 +3,17 @@
 You are receiving ready-made **Godot 4.3+** assets for a multiplayer brawl game:
 a green plastic school desk and chair that can be pushed, picked up and thrown,
 plus eight stationery weapons that can also stab or swing, a bow with arrows,
-and ten everyday school items (including a foam-spraying fire extinguisher).
-All of them stay in sync over LAN or online play. Everything below is already built
+ten everyday school items (including a foam-spraying fire extinguisher), ping
+pong and badminton gear, a vending machine, and drinks/potions with status
+effects. All of them stay in sync over LAN or online play. Everything below is already built
 and tested. Your job is usually just to wire it into the game's player and level.
 
 ## Rules that matter
 
 - Put the folders at **`res://assets/classroom_furniture/`**,
-  **`res://assets/stationery/`**, **`res://assets/archery/`** and
-  **`res://assets/school_items/`** exactly. The scenes reference files by those
+  **`res://assets/stationery/`**, **`res://assets/archery/`**,
+  **`res://assets/school_items/`**, **`res://assets/sports/`** and
+  **`res://assets/vending/`** exactly. The scenes reference files by those
   paths. The scripts build on each other (`Bow`, `Arrow`, `FireExtinguisher`
   and every school item use `StationeryWeapon`, which extends `NetworkedProp`),
   so everything needs the furniture and stationery folders. If it has to live elsewhere, move it inside the
@@ -26,7 +28,8 @@ and tested. Your job is usually just to wire it into the game's player and level
   `tools/generate_assets.py` (furniture; then `tools/make_scenes.py` if
   colliders change) and `tools/generate_stationery.py` (stationery models,
   textures and scenes), `tools/generate_archery.py` (bow and arrow) and
-  `tools/generate_school_items.py` (school items). They need numpy + Pillow. Change a script and run it
+  `tools/generate_school_items.py` (school items), `tools/generate_sports.py`
+  and `tools/generate_vending.py`. They need numpy + Pillow. Change a script and run it
   again.
 
 ## Files
@@ -259,6 +262,106 @@ All of them are `StationeryWeapon`s, configured per item in
 - **Visuals:** foam is a `CPUParticles3D` child, emitting while the synced
   `spraying` is true.
 
+### Status effects (`classroom_furniture/scripts/status_effects.gd`)
+
+`class_name StatusEffects extends Node`. Put one as a child of each
+player/NPC body.
+
+- **Host-side:** `apply(effect, duration, strength, source)` and
+  `clear(effect)`.
+- **Any peer:** `is_active(effect)`, `strength_of(effect, default)`.
+- **Signals:** `effect_started`, `effect_ended`, `healed(amount, source)`.
+- **Sync:** `active_effects` (effect → strength) is synced by a
+  `MultiplayerSynchronizer` it creates itself. The node forces its own
+  multiplayer authority to 1 (the host), even if the player sets authority
+  recursively.
+- **Static helpers** used by every prop:
+  - `StatusEffects.apply_to(body, effect, duration, strength, source)` calls
+    the body's `apply_status_effect(...)` if it has one, else its
+    StatusEffects child.
+  - `StatusEffects.heal_body(body, amount, source)` calls the body's
+    `heal(amount)` if it has one, else emits the `healed` signal.
+
+**Effect names in this pack:**
+- `sleep`: can't act (ball volley, sleep potion).
+- `slip`: loses footing (water puddle, re-applied every 0.25 s while
+  standing in it, 1.2 s each).
+- `speed`, `strength` (damage multiplier), `jump`: multipliers.
+- `shield`: damage-taken multiplier, 0.5.
+
+The game decides what each does.
+
+### Sports (`assets/sports/`)
+
+All are `StationeryWeapon`s.
+
+**New `StationeryWeapon` exports:**
+- `bat_power` (m/s): a melee attack launches free, unfrozen props of mass ≤
+  `bat_max_mass` within `max(melee_range × 0.6, 0.4)` m of
+  `hands + aim × melee_range × 0.6` along the aim. Their hits are credited to
+  the attacker (`NetworkedProp.credit_throw(peer)`), and the `batted(prop,
+  peer)` signal fires.
+- `aerodynamic`: nose-first steering without sticking.
+- `ccd_always`: continuous collision detection all the time.
+
+| Scene | Script | Notes |
+|---|---|---|
+| ping_pong_paddle | stationery_weapon.gd | swing 7, range 1.0, bat_power 16 |
+| badminton_racket | stationery_weapon.gd | swing 6, range 1.25, bat_power 24 |
+| shuttlecock | stationery_weapon.gd | aerodynamic, linear_damp 1.6, 0.02 kg |
+| ping_pong_ball | ping_pong_ball.gd (`PingPongBall`) | sphere r 0.02, bounce 1.0, **ccd_always** (without it a 4 cm sphere falls through floors in Godot Physics); syncs `absorbed` |
+| ball_bucket | ball_bucket.gd (`BallBucket`) | syncs `balls` (30, max 40); origin at the handle |
+
+**`BallBucket`:**
+- **Volley:** `request_attack()` fires a volley when `balls ≥
+  balls_per_volley` (6), otherwise it swings. Cone 6 m / 18° with line of
+  sight, cooldown 1.2 s.
+- **Effect:** each non-prop body gets 2 damage (kind `"volley"`) plus
+  `sleep` for 2.5 s; props just get nudged. Particle balls play on all peers.
+- **Refill:** `can_collect(PingPongBall)` / `request_collect()` absorb loose
+  balls; `PropHolder.try_grab()` does this when holding the bucket.
+
+### Vending (`assets/vending/`)
+
+**`VendingMachine`** (`StaticBody3D`, `vending_machine.gd`):
+- **Setup:** joins group `usables`; `PropHolder.use()` calls
+  `request_use()` on the nearest usable within `reach`.
+- **Host checks:** per-player `cooldown_per_player` (2 s) and `stock`
+  (synced, 24, −1 = unlimited).
+- **Dispensing:** instantiates `products[i]` (weighted random by `weights`,
+  or `request_use(index)`) into its `Dispensed` child at `dispense_point`,
+  just in front of the tray, with a nudge outward.
+- **Replication:** a `MultiplayerSpawner` child (spawn_path
+  `../Dispensed`) lists every product scene. Add new products there too.
+- **Signals:** `vended(peer, item)`, `sold_out`.
+- **Spawned props:** `NetworkedProp._ready()` now keeps the host-sent
+  `net_position` on clients for props spawned at runtime.
+
+**`Drink`** (`drink.gd`, every bottle/can; syncs `full`):
+- **Drinking:** `request_attack()` drinks when full (otherwise swings). After
+  `drink_time` the drinker (the holder's body, else the hands' parent) gets
+  `heal_amount` and `effect` / `effect_duration` / `effect_strength`, then
+  `full = false` and `drunk(peer, effect)` fires.
+- **Splashing:** thrown full and hitting at ≥ `splash_min_speed`, it splashes.
+  Every non-prop body within `splash_radius` gets `splash_heal` and
+  `splash_effect`.
+- **Puddle:** with `makes_puddle`, a `WaterPuddle` (Area3D, r 1.1 m, 15 s,
+  applies `slip`) is created on every peer via RPC at the floor below.
+- **Visuals:** the "Liquid" material surface hides when empty.
+
+| Scene | Drink | Splash |
+|---|---|---|
+| water_bottle_plastic | heal 15 | puddle (`slip`) |
+| potion_health | heal 50 | heal 25 |
+| potion_speed (can) | speed 1.6 × 8 s | speed 1.6 × 4 s |
+| potion_strength | strength 1.5 × 10 s | 5 s |
+| potion_shield (can) | shield 0.5 × 10 s | 5 s |
+| potion_sleep | sleep 4 s | sleep 3 s |
+| potion_jump | jump 1.5 × 10 s | 5 s |
+
+Machine weights: water 4, health 2, speed 1.5, strength / shield / jump 1.2,
+sleep 1.
+
 ### Minimal player wiring
 
 ```gdscript
@@ -288,6 +391,14 @@ func on_prop_hit(prop, speed, thrower_id):   # runs on the host
 
 func apply_knockback(v: Vector3):   # runs on the host
     velocity += v
+
+func heal(amount):   # runs on the host (drinks, health potion splash)
+    health = min(health + amount, max_health)
+
+# Add a StatusEffects child node, then read it in your movement/combat code:
+#   if $StatusEffects.is_active(&"sleep"): return
+#   speed *= $StatusEffects.strength_of(&"speed", 1.0)
+# And a "use" key:  if event.is_action_pressed("use"): $Hands.use()
 ```
 
 ## Verified behaviour (Godot 4.3, headless tests in `tests/`)
@@ -327,6 +438,31 @@ bystander.
 
 **Grab choice:** hands over a desk pick the pencil on it, not the desk; hands
 beside a chair pick the chair, not the compass on the desk.
+
+- The client buys a drink from the vending machine, and both sides see it
+  appear at the machine (spawned through the machine's
+  `MultiplayerSpawner`). The client picks it up and drinks it, and the host
+  sees `drunk` from the client.
+- The client fires a ball volley at a target that exists on both peers. The
+  host applies `sleep`, and the client sees it through the synced
+  `StatusEffects`.
+
+**Sports and vending (offline):**
+- **Every item** rests and can be picked up.
+- **Sports:** the paddle bats a ball into a player (credited to the batter);
+  the ball bounces back to about 58% of its drop height; the racket smashes a
+  shuttlecock, which turns nose-first and slows down.
+- **Bucket:** the volley puts the player in front to sleep (not one outside
+  the cone or behind a wall), uses 6 balls, has a cooldown, and wears off
+  after 2.5 s. Grabbing a loose ball refills it, and when nearly empty it
+  swings.
+- **Machine:** sells a drink in front of the tray, has a per-player cooldown,
+  sells a chosen product, and stops when empty.
+- **Drinks:** drinking heals or applies the effect and empties the bottle; an
+  empty bottle swings.
+- **Splashes:** a thrown water bottle leaves a puddle that makes a player slip
+  (and it stops after they leave). Sleep potion splash sleeps everyone
+  nearby (not someone far away), and health potion splash heals.
 
 **Archery (offline):** three arrows load (one nocked, two stowed and hidden,
 none grabbable by others). A full draw shoots at 40 m/s and sticks tip-first

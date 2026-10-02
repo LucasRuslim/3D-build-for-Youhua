@@ -109,45 +109,11 @@ func _spray_tick(dt: float) -> void:
 	var aim := -global_basis.z  # the hold transform points it where the holder aims
 	if _held_by and _held_by.has_method("get_aim_direction"):
 		aim = (_held_by.call("get_aim_direction") as Vector3).normalized()
-	var space := get_world_3d().direct_space_state
-	var query := PhysicsShapeQueryParameters3D.new()
-	var sphere := SphereShape3D.new()
-	sphere.radius = spray_range
-	query.shape = sphere
-	query.transform = Transform3D(Basis.IDENTITY, origin)
 	var exclude: Array[RID] = [get_rid()]
 	if is_instance_valid(_ignored_body):
 		exclude.append(_ignored_body.get_rid())
-	query.exclude = exclude
-	var cos_max := cos(deg_to_rad(spray_angle_deg))
-	var done := {}
-	for r in space.intersect_shape(query, 256):  # a busy classroom has lots of bodies in range
-		var body: Node3D = r.collider
-		if body == null or done.has(body) or body is StaticBody3D:
-			continue
-		done[body] = true
-		var target := _body_center(body)
-		var to := target - origin
-		if to.length() > spray_range or to.normalized().dot(aim) < cos_max:
-			continue
-		# Foam doesn't go through walls.
-		var ray := PhysicsRayQueryParameters3D.create(origin, target)
-		ray.exclude = exclude
-		var hit := space.intersect_ray(ray)
-		if not hit.is_empty() and hit.collider != body:
-			continue
+	for body in cone_targets(origin, aim, spray_range, spray_angle_deg, exclude):
 		_foam_hit(body, aim, spray_damage_per_second * dt, spray_push_speed, spray_prop_push * dt, "spray")
-
-
-# Middle of a body's collision shapes (props have their origin on the floor).
-func _body_center(body: Node3D) -> Vector3:
-	var sum := Vector3.ZERO
-	var n := 0
-	for c in body.get_children():
-		if c is CollisionShape3D:
-			sum += c.global_position
-			n += 1
-	return sum / n if n > 0 else body.global_position
 
 
 func _foam_hit(body: Node, dir: Vector3, damage: float, push_speed: float, prop_impulse: float, kind: String) -> void:
@@ -189,7 +155,7 @@ func _burst() -> void:
 		if body == null or done.has(body) or body is StaticBody3D:
 			continue
 		done[body] = true
-		var dir := (_body_center(body) - centre)
+		var dir := (body_center(body) - centre)
 		dir = (dir.normalized() if dir.length() > 0.01 else Vector3.UP) + Vector3.UP * 0.4
 		_foam_hit(body, dir.normalized(), burst_damage, burst_push_speed, 3.0, "burst")
 	burst.emit(centre)

@@ -124,6 +124,22 @@ def add_lathe(part: MeshPart, profile, sides=16, flat=False, angle0=0.0, cap_sta
         part.add(pts, nrm, pts[:, :2] * UV_SCALE, fix_winding(pts, nrm, np.array(idx)))
 
 
+def add_uv_sphere(part: MeshPart, r, center=(0.0, 0.0, 0.0), rings=12, segs=20):
+    """Sphere with equirectangular UVs (V = 0 at the top)."""
+    pos, nrm, uv = [], [], []
+    c = np.asarray(center, float)
+    for i in range(rings + 1):
+        lat = math.pi * i / rings
+        for j in range(segs + 1):
+            lon = 2 * math.pi * j / segs
+            d = np.array((math.sin(lat) * math.cos(lon), math.cos(lat), math.sin(lat) * math.sin(lon)))
+            pos.append(c + d * r)
+            nrm.append(d)
+            uv.append((j / segs, i / rings))
+    pos, nrm = np.array(pos), np.array(nrm)
+    part.add(pos, nrm, uv, fix_winding(pos, nrm, grid_indices(rings + 1, segs + 1)))
+
+
 def add_prism(part: MeshPart, pts2d, y0, y1):
     """Convex polygon given in the XZ plane, extruded between y0 and y1."""
     pts = np.asarray(pts2d, float)
