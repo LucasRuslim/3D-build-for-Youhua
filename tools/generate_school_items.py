@@ -111,6 +111,42 @@ def make_textures() -> dict[str, Path]:
     shade = 1.0 + 0.06 * weave + 0.04 * periodic_noise(s, 20, 24)
     save("fabric_red_albedo", Image.fromarray(np.clip(base[None, None, :] * shade[..., None], 0, 255).astype(np.uint8)))
     save("fabric_red_normal", Image.fromarray(height_to_normal(weave, 0.6)))
+
+    # Spray paint splats: white shapes (tinted by the paint colour in Godot),
+    # a soft-edged blob plus flecks, four variants so marks don't repeat.
+    n = 256
+    yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n * 2 - 1
+    for v in range(4):
+        rng = np.random.default_rng(100 + v)
+        ang = np.arctan2(yy, xx)
+        wobble = 0.55 + 0.06 * sum(rng.uniform(0.3, 1) * np.cos(k * ang + rng.uniform(0, 6.3)) for k in (3, 5, 8))
+        a = np.clip((wobble - np.hypot(xx, yy)) / 0.06, 0, 1)
+        for _ in range(26):  # flecks around the blob
+            r = rng.uniform(0.55, 0.95)
+            t = rng.uniform(0, 2 * math.pi)
+            cx, cy, rad = r * math.cos(t), r * math.sin(t), rng.uniform(0.015, 0.05)
+            a = np.maximum(a, np.clip((rad - np.hypot(xx - cx, yy - cy)) / 0.015, 0, 1))
+        a *= 0.85 + 0.15 * periodic_noise(n, 3, 200 + v)  # uneven coverage
+        rgba = np.zeros((n, n, 4), np.uint8)
+        rgba[..., :3] = 255
+        rgba[..., 3] = np.clip(a * 255, 0, 255).astype(np.uint8)
+        save(f"paint_splat_{v}", Image.fromarray(rgba, "RGBA"))
+
+    # Spray can label: red with drips and the colour name.
+    img = Image.new("RGB", (1024, 384), (205, 18, 24))
+    dr = ImageDraw.Draw(img)
+    dr.rectangle([0, 0, 1024, 70], fill=(30, 30, 34))
+    for k in range(18):
+        x = 30 + k * 57
+        dr.rectangle([x, 70, x + 16, 70 + 40 + (k * 37) % 90], fill=(30, 30, 34))
+        dr.ellipse([x - 3, 100 + (k * 37) % 90, x + 19, 122 + (k * 37) % 90], fill=(30, 30, 34))
+    big = ImageFont.load_default(size=70)
+    small = ImageFont.load_default(size=34)
+    for cx in (256, 768):
+        dr.text((cx - dr.textlength("RED", font=big) / 2, 210), "RED", font=big, fill=(255, 255, 255))
+        dr.text((cx - dr.textlength("SPRAY PAINT", font=small) / 2, 300), "SPRAY PAINT", font=small,
+                fill=(255, 230, 230))
+    save("spray_label", img)
     return paths
 
 
@@ -139,6 +175,9 @@ MATS = {
     "EraserWood": {"color": (198, 156, 109), "roughness": 0.6},
     "Felt": {"color": (58, 58, 62), "roughness": 1.0},
     "TrayOrange": {"color": (224, 122, 46), "roughness": 0.4},
+    "SprayLabel": {"color": (255, 255, 255), "albedo_tex": "spray_label", "roughness": 0.35},
+    "CanSteel": {"color": (205, 208, 212), "metallic": 0.85, "roughness": 0.3},
+    "NozzleWhite": {"color": (240, 240, 240), "roughness": 0.5},
 }
 
 
@@ -298,6 +337,20 @@ def build_lunch_tray():
     return P
 
 
+def build_spray_paint():
+    P = parts_for("CanSteel", "SprayLabel", "NozzleWhite", "BlackPlastic")
+    h0, h1, r = -0.095, 0.075, 0.033
+    upright(P["CanSteel"], (0, 0, 0), lambda q: add_lathe(q, [(0.028, h0), (r, h0 + 0.008)], sides=24, cap_start=True))
+    upright(P["SprayLabel"], (0, 0, 0), lambda q: add_lathe(q, [(r, h0 + 0.008), (r, h1)], sides=24,
+                                                             uv_band=(h1, h0 + 0.008)))
+    upright(P["CanSteel"], (0, 0, 0), lambda q: add_lathe(
+        q, [(r, h1), (0.03, 0.088), (0.02, 0.098), (0.012, 0.101), (0.011, 0.104)], sides=24, cap_end=True))
+    upright(P["NozzleWhite"], (0, 0, 0), lambda q: add_lathe(q, [(0.0085, 0.104), (0.0085, 0.121)], sides=14,
+                                                              cap_end=True))
+    add_box(P["BlackPlastic"], (0, 0.113, -0.0085), (0.004, 0.004, 0.002))  # the hole
+    return P
+
+
 # fname, node, builder, mass, settings, kwargs for write_scene
 ITEMS = [
     ("fire_extinguisher", "FireExtinguisher", build_fire_extinguisher, 4.0,
@@ -335,6 +388,10 @@ ITEMS = [
      dict(attack_style=1, melee_damage=10.0, melee_range=1.0, attack_cooldown=0.55, melee_knockback=3.0,
           throw_speed=14.0, throw_spin=14.0, throw_damage_per_speed=0.9, flat_spin=True),
      dict(min_size=0.04)),  # a 2.6 cm light tray sinks into desks with a thinner or bottom-flush box
+    ("spray_paint", "SprayPaint", build_spray_paint, 0.4,
+     dict(attack_style=1, melee_damage=5.0, melee_range=0.8, attack_cooldown=0.45,
+          throw_speed=15.0, throw_spin=8.0, throw_damage_per_speed=0.8),
+     dict(script="res://assets/school_items/scripts/spray_paint.gd", extra_synced=("paint", "spraying"))),
 ]
 
 

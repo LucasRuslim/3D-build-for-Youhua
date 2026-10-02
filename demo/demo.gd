@@ -5,7 +5,8 @@ extends Node3D
 ##   RMB      drop                      E / MMB  stab or swing held stationery;
 ##                                      with the bow: hold to draw, release to shoot
 ##                                      with a fire extinguisher: hold to spray foam
-##                                      with a drink: drink it; ball bucket: volley
+##                                      with a drink: drink it; ball bucket: volley;
+##                                      spray paint: hold to paint
 ##   F        use (vending machine)
 ##   (holding the bow, LMB near an arrow loads it; same for the ball bucket and balls)
 ##   Space    shockwave (host only)

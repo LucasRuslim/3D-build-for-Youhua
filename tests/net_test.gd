@@ -17,6 +17,10 @@ func check(cond: bool, msg: String) -> void:
 		failures += 1
 
 
+func paint_marks(node: Node) -> int:
+	return node.get_children().filter(func(c): return c.name.begins_with("PaintMark")).size()
+
+
 func seconds(t: float) -> void:
 	await create_timer(t).timeout
 
@@ -45,6 +49,27 @@ func _initialize() -> void:
 
 	if role == "server":
 		check(demo.host() == OK, "server: hosting")
+		# Spray paint on the front wall before anyone joins: a late joiner
+		# must still see it.
+		var can: SprayPaint = demo.get_node("Props/SprayPaint")
+		var my_hand = demo.get_node("Hands/1")
+		my_hand.follow_mouse = false
+		my_hand.global_transform = Transform3D(Basis.IDENTITY, can.global_position + Vector3(0, 0.5, 0.3))
+		for i in 3:
+			await physics_frame
+		my_hand.holder.try_grab()
+		for i in 3:
+			await physics_frame
+		my_hand.global_transform = Transform3D(Basis.IDENTITY, Vector3(-1.2, 1.4, -5.0))
+		for i in 3:
+			await physics_frame
+		my_hand.holder.attack()
+		await seconds(0.5)
+		my_hand.holder.attack_release()
+		my_hand.holder.drop()
+		var wall_n: Node = demo.get_node("WallN")
+		var painted_before := paint_marks(wall_n)
+		check(painted_before > 10, "server: painted the front wall before the client joined (%d marks)" % painted_before)
 		# Host-only target for the client's pencil stab (damage is host-side).
 		var dummy: CharacterBody3D = DummyTarget.new()
 		var dcs := CollisionShape3D.new()
@@ -129,6 +154,13 @@ func _initialize() -> void:
 			await seconds(0.1)
 			t += 0.1
 		check(sleeper_se.is_active(&"sleep"), "server: the client's volley put the sleeper to sleep")
+		# Spray paint: the client paints the front wall too.
+		t = 0.0
+		while t < 15.0 and paint_marks(wall_n) < painted_before + 10:
+			await seconds(0.1)
+			t += 0.1
+		check(paint_marks(wall_n) >= painted_before + 10,
+				"server: sees the client's paint on the wall (%d marks)" % paint_marks(wall_n))
 		await seconds(1.0)
 	else:
 		check(demo.join("127.0.0.1") == OK, "client: joining")
@@ -145,6 +177,10 @@ func _initialize() -> void:
 		var hand = demo.get_node_or_null("Hands/%d" % me)
 		check(hand != null, "client: host spawned my hand")
 		check(demo.get_node("Hands").has_node("1"), "client: host's hand replicated")
+		await seconds(2.0)  # paint from before we joined is replayed a moment after connecting
+		var wall_n: Node = demo.get_node("WallN")
+		var replayed := paint_marks(wall_n)
+		check(replayed > 10, "client: sees paint sprayed before it joined (%d marks)" % replayed)
 		check(chair.freeze, "client: remote chair is kinematic (host simulates)")
 		# Run a local character into Chair0: the push goes to the host, which
 		# moves the chair, and the move comes back to us.
@@ -290,6 +326,24 @@ func _initialize() -> void:
 		check(bucket.balls == balls0 - bucket.balls_per_volley, "client: sees the volley use balls (%d left)" % bucket.balls)
 		var se: StatusEffects = demo.get_node("Sleeper/StatusEffects")
 		check(se.is_active(&"sleep"), "client: sees the sleeper asleep (synced %s)" % [se.active_effects])
+
+		# Spray paint: pick up the can the host left and paint the wall.
+		hand.holder.drop()
+		await seconds(0.5)
+		var can: SprayPaint = demo.get_node("Props/SprayPaint")
+		hand.global_transform = Transform3D(Basis.IDENTITY, can.global_position + Vector3(0, 0.5, 0.3))
+		await seconds(0.5)
+		hand.holder.try_grab()
+		await seconds(0.5)
+		check(can.holder_peer_id == me, "client: holding the spray paint")
+		hand.global_transform = Transform3D(Basis.IDENTITY, Vector3(-0.4, 1.4, -5.0))
+		await seconds(0.5)
+		var before := paint_marks(wall_n)
+		hand.holder.attack()
+		await seconds(0.6)
+		hand.holder.attack_release()
+		await seconds(0.5)
+		check(paint_marks(wall_n) >= before + 10, "client: its own spray paints the wall (%d -> %d marks)" % [before, paint_marks(wall_n)])
 
 	print("RESULT[%s]: %s (%d failures)" % [role, "OK" if failures == 0 else "FAILED", failures])
 	quit(1 if failures else 0)
