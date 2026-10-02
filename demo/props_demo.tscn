@@ -1,8 +1,9 @@
-[gd_scene load_steps=39 format=3]
+[gd_scene load_steps=40 format=3]
 
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_desk.tscn" id="1_desk"]
 [ext_resource type="PackedScene" path="res://assets/classroom_furniture/scenes/school_chair.tscn" id="2_chair"]
 [ext_resource type="Script" path="res://demo/demo.gd" id="3_demo"]
+[ext_resource type="PackedScene" path="res://assets/characters/student/scenes/student.tscn" id="ch_student"]
 [ext_resource type="PackedScene" path="res://assets/school_items/scenes/spray_paint.tscn" id="si_spray_paint"]
 [ext_resource type="PackedScene" path="res://assets/sports/scenes/badminton_racket.tscn" id="sv_badminton_racket"]
 [ext_resource type="PackedScene" path="res://assets/sports/scenes/ball_bucket.tscn" id="sv_ball_bucket"]
@@ -307,6 +308,9 @@ transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, -1.2, 0.11, -5.2)
 [node name="HandSpawner" type="MultiplayerSpawner" parent="."]
 _spawnable_scenes = PackedStringArray("res://demo/demo_hand.tscn")
 spawn_path = NodePath("../Hands")
+
+[node name="Student" parent="." instance=ExtResource("ch_student")]
+transform = Transform3D(0.866025, 0, -0.5, 0, 1, 0, 0.5, 0, 0.866025, 3.6, 0, 2.0)
 
 [node name="UI" type="CanvasLayer" parent="."]
 

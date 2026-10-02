@@ -8,6 +8,8 @@ extends Node3D
 ##                                      with a drink: drink it; ball bucket: volley;
 ##                                      spray paint: hold to paint
 ##   F        use (vending machine)
+##   C / V    change the student's top / bottom (host; synced)   G  glasses
+##   B        student animation idle -> walk -> run (local)
 ##   (holding the bow, LMB near an arrow loads it; same for the ball bucket and balls)
 ##   Space    shockwave (host only)
 ##   F1       host a LAN/online game    F2   join (default 127.0.0.1)
@@ -22,6 +24,7 @@ const HAND_SCENE := preload("res://demo/demo_hand.tscn")
 @onready var hands: Node3D = $Hands
 @onready var props: Node3D = $Props
 @onready var status_label: Label = $UI/Status
+@onready var student: CharacterOutfit = $Student
 
 var _start_transforms := {}
 
@@ -94,6 +97,34 @@ func _unhandled_input(event: InputEvent) -> void:
 			_shockwave.rpc_id(1)
 		KEY_R:
 			_reset.rpc_id(1)
+		KEY_C:
+			_change_outfit.rpc_id(1, &"top")
+		KEY_V:
+			_change_outfit.rpc_id(1, &"bottom")
+		KEY_G:
+			_change_outfit.rpc_id(1, &"glasses")
+		KEY_B:
+			var anims := [&"idle", &"walk", &"run"]
+			var cur := anims.find(StringName(student.get_animation_player().current_animation))
+			student.play(anims[(cur + 1) % anims.size()])
+
+
+# The host changes the student's clothes; its MultiplayerSynchronizer sends
+# them to everyone.
+@rpc("any_peer", "call_local", "reliable")
+func _change_outfit(slot: StringName) -> void:
+	if not multiplayer.is_server():
+		return
+	if slot == &"glasses":
+		student.glasses = not student.glasses
+		return
+	var ids: Array = (CharacterOutfit.TOPS if slot == &"top" else CharacterOutfit.BOTTOMS).keys()
+	var cur: StringName = student.top if slot == &"top" else student.bottom
+	var next: StringName = ids[(ids.find(cur) + 1) % ids.size()]
+	if slot == &"top":
+		student.top = next
+	else:
+		student.bottom = next
 
 
 @rpc("any_peer", "call_local", "reliable")
@@ -122,5 +153,5 @@ func _reset() -> void:
 
 
 func _set_status(text: String) -> void:
-	status_label.text = "%s   (peer %d)\nLMB grab/throw  RMB drop  E attack/drink  F use  Space shockwave  R reset  F1 host  F2 join" \
+	status_label.text = "%s   (peer %d)\nLMB grab/throw  RMB drop  E attack/drink  F use  Space shockwave  R reset  C/V/G outfit  B anim  F1 host  F2 join" \
 			% [text, multiplayer.get_unique_id()]

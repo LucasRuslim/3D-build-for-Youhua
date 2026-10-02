@@ -5,7 +5,8 @@ a green plastic school desk and chair that can be pushed, picked up and thrown,
 plus eight stationery weapons that can also stab or swing, a bow with arrows,
 ten everyday school items (including a foam-spraying fire extinguisher), red
 spray paint that leaves real paint marks, ping pong and badminton gear, a
-vending machine, and drinks/potions with status effects. All of them stay in sync over LAN or online play. Everything below is already built
+vending machine, and drinks/potions with status effects. All of them stay in sync over LAN or online play. There is also a rigged
+**student character** (PS3-era low-poly look) with swappable clothes. Everything below is already built
 and tested. Your job is usually just to wire it into the game's player and level.
 
 ## Rules that matter
@@ -28,8 +29,9 @@ and tested. Your job is usually just to wire it into the game's player and level
   `tools/generate_assets.py` (furniture; then `tools/make_scenes.py` if
   colliders change) and `tools/generate_stationery.py` (stationery models,
   textures and scenes), `tools/generate_archery.py` (bow and arrow) and
-  `tools/generate_school_items.py` (school items), `tools/generate_sports.py`
-  and `tools/generate_vending.py`. They need numpy + Pillow. Change a script and run it
+  `tools/generate_school_items.py` (school items), `tools/generate_sports.py`,
+  `tools/generate_vending.py` and `tools/generate_character.py` (student
+  character: body, clothes, textures, animations). They need numpy + Pillow. Change a script and run it
   again.
 
 ## Files
@@ -48,6 +50,8 @@ and tested. Your job is usually just to wire it into the game's player and level
 | `assets/archery/scenes/bow.tscn` | `RigidBody3D` `Bow` (0.9 kg, 114 cm tall, recurve), script `bow.gd`; also syncs `arrow_count`, `draw_amount` |
 | `assets/archery/scenes/arrow.tscn` | `RigidBody3D` `Arrow` (0.03 kg, 72 cm), script `arrow.gd`; also syncs `bow_state` |
 | `assets/school_items/scenes/*.tscn` | 10 items: `fire_extinguisher` (script `fire_extinguisher.gd`, syncs `spray_charge`, `spraying`), `broom`, `umbrella`, `textbook`, `backpack`, `water_bottle`, `basketball` (sphere collider, bouncy), `trash_bin` (cylinder collider), `board_eraser`, `lunch_tray`. All others use `stationery_weapon.gd` |
+| `assets/characters/student/scenes/student.tscn` | `Node3D` `Student`, script `character_outfit.gd` (`class_name CharacterOutfit`), the `student_base.glb` model as child `Model`, and a `MultiplayerSynchronizer` `OutfitSync` (`top`, `bottom`, `glasses`, `top_tint`, `bottom_tint`). Standalone folder; put it at `res://assets/characters/student/` |
+| `assets/characters/student/models/*.glb` | `student_base.glb` (meshes `BodyMesh`, `HeadMesh`, `HairMesh`, `GlassesMesh`, `GlassesLensMesh`; 23-bone humanoid skeleton; animations `idle`, `walk`, `run`) and one skinned `.glb` per clothing piece on the same skeleton |
 | `demo/` | Working example level (mouse "hands", host/join over ENet, stationery on the desks) |
 | `tools/` | Generators for models/textures/scenes |
 | `docs/preview_sheet.jpg`, `docs/stationery_preview.jpg` | What the props look like |
@@ -396,6 +400,43 @@ sleep 1.
   `painted(body, position)` signal fires.
 - **Other colours:** set `paint_color`; materials are cached per colour.
 
+### Student character (`assets/characters/student/`, `class_name CharacterOutfit`)
+
+- **Model:** faces +Z, feet at the origin, about 1.75 m tall with hair,
+  A-pose. It has 23 bones with Godot humanoid names (`Root`, `Hips`, `Spine`,
+  `Chest`, `UpperChest`, `Neck`, `Head`, `Left/RightShoulder`, `...UpperArm`,
+  `...LowerArm`, `...Hand`, `...UpperLeg`, `...LowerLeg`, `...Foot`, `...Toes`).
+  Rest rotations are identity; retarget other animations with a `BoneMap` +
+  `SkeletonProfileHumanoid`.
+- **Look:** textures are 256–512 px with nearest filtering (glTF sampler, so
+  Godot imports `TEXTURE_FILTER_NEAREST_WITH_MIPMAPS`). Clothes are alpha
+  scissor and double-sided, and they sit 1–3 cm outside the body. The top
+  always sits outside the bottom.
+- **Properties** (set from anywhere; sync them by changing them on the authority):
+  - `top: StringName`: `tank_white` (default), `tshirt_navy`, `none`
+  - `bottom: StringName`: `shorts_black` (default), `trousers_grey`, `none`
+  - `glasses: bool`
+  - `top_tint`, `bottom_tint: Color`: multiply the piece's albedo; white = the texture as is
+  - `walk_speed` (1.4), `run_speed` (4.5): used by `set_move_speed`
+- **Methods:**
+  - `set_top(id)`, `set_bottom(id)`, `set_glasses(on)`
+  - `play(anim, blend := 0.2, speed := 1.0)`
+  - `set_move_speed(speed)`: idle below 0.15 m/s, then walk, then run, with
+    matched playback speed
+  - `get_skeleton()`, `get_animation_player()`
+  - `get_clothing(slot) -> Array[MeshInstance3D]`
+  - static `register_top(id, glb_path)` and `register_bottom(id, glb_path)`
+- **How swapping works:** the piece's `.glb` is instanced, its
+  `MeshInstance3D`s are reparented onto the base `Skeleton3D`
+  (`skeleton = ".."`, meta `slot`/`id`), and the rest is freed. Skins bind by
+  bone name, so a new clothing `.glb` only needs the same bone names.
+- **Networking:** `OutfitSync` replicates the outfit on change, including to
+  late joiners. The authority is the node's multiplayer authority, so set it
+  to the owning peer (as for the player) or change outfits on the host.
+- **In a player:** instance `student.tscn` under your `CharacterBody3D`, then
+  call `$Student.set_move_speed(Vector3(velocity.x, 0, velocity.z).length())`
+  every frame on every peer (velocity is usually synced already).
+
 ### Minimal player wiring
 
 ```gdscript
@@ -484,6 +525,15 @@ beside a chair pick the chair, not the compass on the desk.
 - The host paints the front wall before the client joins. The client sees
   all the replayed marks, then paints the wall itself, and the host sees the
   new marks.
+
+**Student character (offline):** humanoid bone names, all meshes skinned to
+one skeleton, and every skin bind names a bone. About 1.75 m tall with the feet
+at 0, and textures nearest-filtered. Default outfit is tank + shorts, then
+swaps to T-shirt + trousers (the old piece is freed). Clothes come off, a newly
+registered piece works, tints apply and reset, and glasses hide. The outfit
+is in the synchronizer. idle/walk/run loop, walk moves the knee more than
+5 cm, and `set_move_speed` picks idle/walk/run. Over ENet the client sees the
+outfit the host set before it joined, and a change it requests from the host.
 
 **Spray paint (offline):** the can rests and is grabbable. Holding attack
 sprays and releasing stops. A second leaves dozens of marks flat on the wall

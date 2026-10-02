@@ -3,8 +3,9 @@
 A green plastic school desk and chair, modelled on the reference video, eight
 pieces of stationery that work as weapons, a bow with arrows, ten everyday
 school things to fight with (including a fire extinguisher that sprays foam),
-ping pong and badminton gear, a vending machine that sells potions, and red
-spray paint that really paints. Everything is
+ping pong and badminton gear, a vending machine that sells potions, red
+spray paint that really paints, and a rigged student character in a PS3-era
+style whose clothes you can change. Every prop is
 a ready-to-use physics prop: you can push it, pick it up and throw it, the
 weapons can also stab, swing or shoot, and it all stays in sync in online or LAN
 multiplayer.
@@ -369,13 +370,65 @@ the node's `healed` signal fires). Prefer your own system? Give your player
 `apply_status_effect(effect, duration, strength, source_peer_id)` and that's
 used instead.
 
+## Student character
+
+![Student: front, side, back, side](docs/student_views.jpg)
+![Navy T-shirt + grey trousers, no clothes, walk, run](docs/student_outfits.jpg)
+
+`assets/characters/student/` (standalone, needs nothing else): the young man
+from the reference sheet. He has messy black hair, black rectangular glasses, a
+white tank top, black athletic shorts with a grey side stripe, and bare feet.
+The look is a PS3-era game: low poly (about 13k triangles in total) with small
+textures drawn with **nearest filtering**, so you see crisp, chunky texels.
+
+| File | What it is |
+|---|---|
+| `scenes/student.tscn` | Drop-in character (`CharacterOutfit`): model, outfit, animations, outfit sync |
+| `models/student_base.glb` | Body, head, hair, glasses, the skeleton, and `idle` / `walk` / `run` animations |
+| `models/top_tank_white.glb`, `top_tshirt_navy.glb` | Tops (white tank top, navy T-shirt) |
+| `models/bottom_shorts_black.glb`, `bottom_trousers_grey.glb` | Bottoms (black shorts, grey trousers) |
+| `textures/*.png` | 256–512 px textures: skin, face, hair, one per clothing piece |
+
+```gdscript
+$Student.top = &"tshirt_navy"        # tank_white, tshirt_navy, none
+$Student.bottom = &"trousers_grey"   # shorts_black, trousers_grey, none
+$Student.glasses = false
+$Student.top_tint = Color.RED        # recolour a piece (multiplies its texture)
+$Student.set_move_speed(velocity.length())   # idle / walk / run, step rate matched
+CharacterOutfit.register_top(&"hoodie", "res://my_clothes/hoodie.glb")  # your own clothes
+```
+
+- **Changing clothes:** every clothing piece is its own `.glb`, skinned to the same
+  skeleton. The script moves the piece's meshes onto the character's
+  `Skeleton3D`, so they follow every animation. With no top or bottom on he
+  wears plain dark trunks.
+- **Multiplayer:** `top`, `bottom`, `glasses` and the tints are in the scene's
+  `MultiplayerSynchronizer` (`OutfitSync`). Whoever has authority over the
+  character (usually its player) changes them, and everyone sees the same
+  outfit, including players who join later.
+- **Rig:** 23 bones with Godot's humanoid names (`Hips`, `Spine`, `Chest`,
+  `UpperChest`, `Neck`, `Head`, `LeftUpperArm`, ..., `RightToes`), A-pose, rest
+  rotations all zero. To use animations from elsewhere (Mixamo and so on), retarget
+  them in the import dock with a `BoneMap` and `SkeletonProfileHumanoid`.
+- **Scale:** 1 unit = 1 m, about 1.75 m tall with hair, faces +Z, feet at the
+  origin. It's only the model; put it under your `CharacterBody3D` with a
+  capsule (radius 0.3, height 1.8) and a `PropHolder` at the hands.
+- **Adding clothes:** model them in Blender on `student_base.glb`'s skeleton
+  (keep the bone names), export a `.glb`, and register it. Or add a builder to
+  `tools/generate_character.py`.
+
+It's a stylized take on the reference, not a likeness of a real person.
+
+![Face close-up](docs/student_face.jpg)
+
 ## Try the demo
 
 Open the folder in Godot 4.3+ and press F5. There's a piece of stationery on
 every desk, a bow with 5 arrows on the floor at the front left, fire
 extinguishers by the side walls, the other school items around the room, a
 vending machine at the front, a can of red spray paint near the front wall, a
-ping pong corner (front right) and a badminton corner (left).
+ping pong corner (front right), a badminton corner (left), and the student
+character at the front right.
 
 | Input | Action |
 |---|---|
@@ -384,6 +437,9 @@ ping pong corner (front right) and a badminton corner (left).
 | Right mouse button | Drop |
 | E or middle mouse button | Stab or swing; with the bow, hold to draw and release to shoot; with the fire extinguisher or spray paint, hold to spray; with a drink, drink it; with the ball bucket, fire a volley |
 | F | Use the vending machine |
+| C / V | Change the student's top / bottom (synced to everyone) |
+| G | Student's glasses on/off |
+| B | Student animation: idle → walk → run (local only) |
 | Left mouse button near an arrow (holding the bow) | Load the arrow |
 | Space | Shockwave |
 | R | Reset furniture |
@@ -403,6 +459,7 @@ godot --headless --path . --script res://tests/archery_test.gd      # offline
 godot --headless --path . --script res://tests/school_items_test.gd # offline
 godot --headless --path . --script res://tests/sports_vending_test.gd # offline
 godot --headless --path . --script res://tests/spray_paint_test.gd  # offline
+godot --headless --path . --script res://tests/character_test.gd    # offline
 godot --headless --path . --script res://tests/net_test.gd -- server &
 godot --headless --path . --script res://tests/net_test.gd -- client  # ENet localhost
 ```
@@ -449,6 +506,14 @@ stay narrow up close, that paint marks a chair and moves with it, that a sprayed
 player gets `painted`, that a surface is capped at `max_marks`, and that the can
 runs out and then swings.
 
+The character test checks the skeleton has the humanoid bone names and that
+every mesh is skinned to it. It also checks the height, the nearest-filtered
+textures and the default outfit. Then it swaps to the T-shirt and trousers,
+takes everything off, and wears a newly registered piece. It also checks the
+tints, the glasses, that the outfit is in the synchronizer, that
+idle/walk/run loop and move the legs, and that `set_move_speed` picks the right
+animation.
+
 In the network test a client's character shoves a chair through the host, then
 the client grabs a chair and throws it; the host sees the pickup, the flight
 and hits credited to that client. Finally the client grabs a pencil off a desk,
@@ -462,7 +527,9 @@ buys a drink from the vending machine (both sides see it appear at the
 machine), drinks it, and fires a ball volley that puts a target to sleep. The
 sleep effect syncs from the host to the client. For spray paint, the host paints
 the front wall before the client joins and the client still sees every mark;
-then the client paints the wall and the host sees it.
+then the client paints the wall and the host sees it. The host dresses the
+student in the T-shirt before the client joins; the client sees it, asks the
+host for the trousers, and sees those too.
 
 ## Rebuilding the assets
 
@@ -475,4 +542,5 @@ python3 tools/generate_archery.py      # bow and arrow models, scenes
 python3 tools/generate_school_items.py # school item models, textures, scenes
 python3 tools/generate_sports.py       # ping pong / badminton models, scenes
 python3 tools/generate_vending.py      # vending machine, drinks, labels, scenes
+python3 tools/generate_character.py    # student body, clothes, textures, animations
 ```

@@ -49,6 +49,9 @@ func _initialize() -> void:
 
 	if role == "server":
 		check(demo.host() == OK, "server: hosting")
+		# Dress the student before anyone joins (a late joiner must see it).
+		demo._change_outfit(&"top")
+		check(demo.student.top == &"tshirt_navy", "server: student wears the navy T-shirt")
 		# Spray paint on the front wall before anyone joins: a late joiner
 		# must still see it.
 		var can: SprayPaint = demo.get_node("Props/SprayPaint")
@@ -181,6 +184,14 @@ func _initialize() -> void:
 		var wall_n: Node = demo.get_node("WallN")
 		var replayed := paint_marks(wall_n)
 		check(replayed > 10, "client: sees paint sprayed before it joined (%d marks)" % replayed)
+		var student: CharacterOutfit = demo.student
+		check(student.top == &"tshirt_navy" and student.get_clothing(&"top").size() == 1
+				and String(student.get_clothing(&"top")[0].name).begins_with("TShirt"),
+				"client: sees the student's outfit the host picked")
+		demo._change_outfit.rpc_id(1, &"bottom")
+		await seconds(0.6)
+		check(student.bottom == &"trousers_grey" and student.get_clothing(&"bottom").size() == 1,
+				"client: asked the host for new trousers and sees them")
 		check(chair.freeze, "client: remote chair is kinematic (host simulates)")
 		# Run a local character into Chair0: the push goes to the host, which
 		# moves the chair, and the move comes back to us.
