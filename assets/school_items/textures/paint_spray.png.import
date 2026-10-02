@@ -2,16 +2,16 @@
 
 importer="texture"
 type="CompressedTexture2D"
-uid="uid://dkukddnwmvyne"
-path="res://.godot/imported/paint_splat_0.png-3fe617150d853ed43c0778cd7d9095fb.ctex"
+uid="uid://dijir6u5lmrwf"
+path="res://.godot/imported/paint_spray.png-1771bf7f46c8b34a87e05d629c902fd3.ctex"
 metadata={
 "vram_texture": false
 }
 
 [deps]
 
-source_file="res://assets/school_items/textures/paint_splat_0.png"
-dest_files=["res://.godot/imported/paint_splat_0.png-3fe617150d853ed43c0778cd7d9095fb.ctex"]
+source_file="res://assets/school_items/textures/paint_spray.png"
+dest_files=["res://.godot/imported/paint_spray.png-1771bf7f46c8b34a87e05d629c902fd3.ctex"]
 
 [params]
 

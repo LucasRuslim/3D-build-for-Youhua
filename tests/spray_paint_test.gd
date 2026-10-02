@@ -31,7 +31,7 @@ func make_static_box(pos: Vector3, size: Vector3) -> StaticBody3D:
 
 
 func marks_on(node: Node) -> Array:
-	return node.get_children().filter(func(c): return c.name.begins_with("PaintMark"))
+	return SprayPaint.marks_on(node)  # global transforms of the paint puffs
 
 
 func _initialize() -> void:
@@ -64,7 +64,11 @@ func _initialize() -> void:
 	await wait_frames(2)
 	check(not can.spraying, "releasing attack stops spraying")
 	var on_wall := marks_on(wall)
-	check(on_wall.size() > 40, "a second of spraying leaves %d paint marks on the wall" % on_wall.size())
+	check(on_wall.size() > 80, "a second of spraying leaves %d paint puffs on the wall" % on_wall.size())
+	var layers := wall.get_children().filter(func(c): return c is MultiMeshInstance3D)
+	check(layers.size() == 1, "all the paint on the wall is one MultiMesh layer")
+	var sizes: Array = on_wall.map(func(m): return m.basis.x.length())
+	check(sizes.max() < 0.15, "spray puffs stay narrow at 1.5 m (largest %.3f m; the droplets in them are ~0.5 mm)" % sizes.max())
 	var flat := on_wall.all(_flat_on_wall)
 	check(flat, "marks lie flat on the wall surface, facing out")
 	var spread := on_wall.all(_near_aim)
@@ -86,10 +90,12 @@ func _initialize() -> void:
 	var on_chair := marks_on(chair)
 	check(on_chair.size() > 10, "the chair gets painted (%d marks)" % on_chair.size())
 	if on_chair.size() > 0:
-		var rel: Vector3 = chair.to_local(on_chair[0].global_position)
+		var rel: Vector3 = chair.to_local(on_chair[0].origin)
 		chair.global_transform = Transform3D(Basis(Vector3.UP, 1.2), Vector3(6, 0, 3))
 		await wait_frames(2)
-		check(chair.to_local(on_chair[0].global_position).distance_to(rel) < 0.001, "paint moves with the chair")
+		var moved: Transform3D = marks_on(chair)[0]
+		check(moved.origin.distance_to(on_chair[0].origin) > 1.0 and chair.to_local(moved.origin).distance_to(rel) < 0.001,
+				"paint moves with the chair")
 
 	# Spraying a player marks them "painted".
 	var person: CharacterBody3D = DummyTarget.new()
@@ -112,17 +118,19 @@ func _initialize() -> void:
 	check(se.is_active(&"painted") and marks_on(person).size() > 0,
 			"a sprayed player gets painted (%d marks, %s)" % [marks_on(person).size(), se.active_effects])
 
-	# Old marks disappear past max_marks.
+	# A surface keeps at most max_marks puffs; then the oldest get painted over.
+	var wall2 := make_static_box(Vector3(0, 1.5, 4.1), Vector3(10, 3, 0.2))  # face at z = 4.0
 	can.max_marks = 60
-	hands.global_transform = Transform3D(Basis.IDENTITY, Vector3(2, 1.4, -1.5))
+	hands.global_transform = Transform3D(Basis.looking_at(Vector3.BACK), Vector3(0, 1.4, 2.5))
 	await wait_frames(2)
 	hands.attack()
 	await wait_frames(90)
 	hands.attack_release()
 	await wait_frames(3)
-	check(can.get_marks().size() <= 60, "marks are capped at max_marks (%d)" % can.get_marks().size())
+	check(marks_on(wall2).size() == 60, "a surface keeps at most max_marks puffs (%d)" % marks_on(wall2).size())
 
 	# Empty can: no paint, attack swings.
+	hands.global_transform = Transform3D(Basis.IDENTITY, Vector3(0, 1.4, -1.5))
 	can.paint = 0.01
 	hands.attack()
 	await wait_frames(30)
@@ -143,9 +151,9 @@ func _initialize() -> void:
 	quit(1 if failures else 0)
 
 
-func _flat_on_wall(m: Node3D) -> bool:
-	return absf(m.global_position.z + 3.0) < 0.006 and m.global_basis.z.normalized().dot(Vector3.BACK) > 0.99
+func _flat_on_wall(m: Transform3D) -> bool:
+	return absf(m.origin.z + 3.0) < 0.006 and m.basis.z.normalized().dot(Vector3.BACK) > 0.99
 
 
-func _near_aim(m: Node3D) -> bool:
-	return Vector2(m.global_position.x, m.global_position.y - 1.4).length() < 0.4
+func _near_aim(m: Transform3D) -> bool:
+	return Vector2(m.origin.x, m.origin.y - 1.4).length() < 0.4

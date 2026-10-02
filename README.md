@@ -265,14 +265,20 @@ func apply_knockback(v: Vector3):
 ### Spray paint
 
 ![Red spray paint on a wall and a chair](docs/spray_paint.jpg)
+![Close-up of one stroke from 1 m](docs/spray_paint_closeup.jpg)
 
 `assets/school_items/scenes/spray_paint.tscn`: a can of **red** spray paint
-that really paints.
+that really paints, with a fine, airbrush-style spray.
 
 - **Spraying:** hold attack (`$Hands.attack()` on press,
-  `$Hands.attack_release()` on release). A red mist comes out, and **paint
-  marks appear on whatever it hits**: walls, floors, desks, chairs, players.
-  It reaches 4 m.
+  `$Hands.attack_release()` on release). A fine red mist comes out, and
+  **paint appears on whatever it hits**: walls, floors, desks, chairs,
+  players. It reaches 4 m.
+- **Fine droplets:** each puff is thousands of tiny droplets (about half a
+  millimetre each), dense in the middle with speckled overspray at the edges.
+  Close up the stroke is narrow, and it widens with distance like a real can.
+- **Builds up:** a quick pass leaves a light coat, and holding on one spot
+  builds up solid red.
 - **Paint sticks:** marks stay on what they hit, so a painted chair keeps its
   paint when it's thrown.
 - **Painted players:** they get the `painted` status effect for 4 s, which
@@ -281,8 +287,9 @@ that really paints.
   Empty, it's a small club.
 - **Multiplayer:** everyone sees the same paint, including players who join
   after it was sprayed.
-- **Mark limit:** each can keeps up to 600 marks (`max_marks`); the oldest
-  disappear first.
+- **Performance:** all the paint on one surface is drawn as a single object,
+  so thousands of puffs stay cheap. Each surface keeps up to 4,000 puffs
+  (`max_marks`); after that the oldest get painted over.
 - **Other colours:** the colour is the `paint_color` setting, so a blue or
   green can is just a copy of the scene with a different colour.
 
@@ -437,9 +444,10 @@ makes players slip, and sleep and health potions splash everyone nearby.
 
 The spray paint test checks that holding attack sprays and releasing stops, and
 that a second of spraying leaves dozens of marks lying flat on the wall where
-you aimed. It also checks that paint marks a chair and moves with it, that a
-sprayed player gets `painted`, that marks are capped, and that the can runs out
-and then swings.
+you aimed. It also checks that a wall's paint is one MultiMesh layer, that puffs
+stay narrow up close, that paint marks a chair and moves with it, that a sprayed
+player gets `painted`, that a surface is capped at `max_marks`, and that the can
+runs out and then swings.
 
 In the network test a client's character shoves a chair through the host, then
 the client grabs a chair and throws it; the host sees the pickup, the flight

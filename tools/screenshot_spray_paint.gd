@@ -61,8 +61,8 @@ func _initialize() -> void:
 			Vector3(1.2, 2.2, -2.5)]
 	hands.attack()
 	for s in pts.size() - 1:
-		for k in 40:
-			var target: Vector3 = pts[s].lerp(pts[s + 1], k / 40.0)
+		for k in 75:
+			var target: Vector3 = pts[s].lerp(pts[s + 1], k / 75.0)
 			hands.look_at(target)
 			await physics_frame
 	for k in 50:
@@ -77,5 +77,8 @@ func _initialize() -> void:
 		await process_frame
 	await RenderingServer.frame_post_draw
 	root.get_texture().get_image().save_png(out)
-	print("marks: ", can.get_marks().size(), " paint left: ", snappedf(can.paint, 0.01))
+	var total := 0
+	for n in w.get_children():
+		total += SprayPaint.mark_count_on(n)
+	print("puffs: ", total, " paint left: ", snappedf(can.paint, 0.01))
 	quit()

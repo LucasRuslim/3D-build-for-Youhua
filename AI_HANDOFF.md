@@ -369,19 +369,28 @@ sleep 1.
   `nozzle` (0, 0.112, −0.018) spraying along −Z.
 - **Controls:** `request_attack()` sprays when `paint > 0` (otherwise it
   swings); `request_release()` stops.
-- **Host spray tick (every 0.05 s):** casts `rays_per_tick` (4) rays in a
-  `spray_spread_deg` (5°) cone, up to `spray_range` (4 m), excluding the can
-  and the holder. Each hit becomes a mark. Its transform (basis.z = surface
-  normal, random roll, size `mark_size_near`–`mark_size_far` by distance) is
-  stored *relative to the hit body*. Batches go to every peer through the
-  reliable RPC `_add_marks(paths, local_transforms, variants)`.
-- **Marks:** each is a `MeshInstance3D` named `PaintMark*` parented to the hit
-  body (StaticBody, prop or character), with a shared QuadMesh and an
-  alpha-scissor material (`paint_splat_0..3.png` tinted `paint_color`). So
-  paint moves with props.
-- **Late joiners:** the host keeps a history (up to `max_marks`) and replays
-  it to each new peer 1 s after `peer_connected`.
-- **Cap:** every peer frees the oldest marks past `max_marks` (600).
+- **Host spray tick (every 0.05 s):** casts `rays_per_tick` (10) rays in a
+  `spray_spread_deg` (4°) cone, up to `spray_range` (4 m), excluding the can
+  and the holder. Each hit becomes a "puff". Its transform (basis.z = surface
+  normal, random roll, size `mark_size_near` 0.05 to `mark_size_far` 0.22 by
+  distance) is stored *relative to the hit body*.
+- **Sending:** batches go to every peer through the reliable RPC
+  `_add_marks(unique_paths, path_index_per_puff, local_transforms)`.
+- **Drawing:** on every peer, all puffs of one colour on one body are
+  instances in one `MultiMeshInstance3D` named `PaintLayer_<rrggbb>`, a child
+  of that body (StaticBody, prop or character), so paint moves with props.
+  The layer grows from 256 instances by doubling. It uses an alpha-blended
+  material with `paint_spray.png`: thousands of ~0.5 mm droplets dense in the
+  middle, tinted `paint_color`. Same-colour blending is order-independent, so
+  puffs need no sorting and build up like real paint.
+- **Reading puffs:** each layer also keeps its puff transforms in meta
+  `"puffs"`, because MultiMesh instance data can't be read back on a headless
+  server. Use `SprayPaint.marks_on(body)` (global transforms) and
+  `SprayPaint.mark_count_on(body)`.
+- **Cap:** a layer keeps at most `max_marks` (4000) puffs, then overwrites
+  the oldest.
+- **Late joiners:** the host keeps a history (up to 2 × `max_marks`) and
+  replays it to each new peer 1 s after `peer_connected`, in chunks of 200.
 - **Players:** non-prop, non-static bodies get the `painted` status effect
   (`painted_effect_duration` 4 s, throttled to every 0.5 s), and the
   `painted(body, position)` signal fires.

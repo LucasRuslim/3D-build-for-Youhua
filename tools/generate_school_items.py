@@ -112,25 +112,33 @@ def make_textures() -> dict[str, Path]:
     save("fabric_red_albedo", Image.fromarray(np.clip(base[None, None, :] * shade[..., None], 0, 255).astype(np.uint8)))
     save("fabric_red_normal", Image.fromarray(height_to_normal(weave, 0.6)))
 
-    # Spray paint splats: white shapes (tinted by the paint colour in Godot),
-    # a soft-edged blob plus flecks, four variants so marks don't repeat.
-    n = 256
-    yy, xx = (np.mgrid[0:n, 0:n] + 0.5) / n * 2 - 1
-    for v in range(4):
-        rng = np.random.default_rng(100 + v)
-        ang = np.arctan2(yy, xx)
-        wobble = 0.55 + 0.06 * sum(rng.uniform(0.3, 1) * np.cos(k * ang + rng.uniform(0, 6.3)) for k in (3, 5, 8))
-        a = np.clip((wobble - np.hypot(xx, yy)) / 0.06, 0, 1)
-        for _ in range(26):  # flecks around the blob
-            r = rng.uniform(0.55, 0.95)
-            t = rng.uniform(0, 2 * math.pi)
-            cx, cy, rad = r * math.cos(t), r * math.sin(t), rng.uniform(0.015, 0.05)
-            a = np.maximum(a, np.clip((rad - np.hypot(xx - cx, yy - cy)) / 0.015, 0, 1))
-        a *= 0.85 + 0.15 * periodic_noise(n, 3, 200 + v)  # uneven coverage
-        rgba = np.zeros((n, n, 4), np.uint8)
-        rgba[..., :3] = 255
-        rgba[..., 3] = np.clip(a * 255, 0, 255).astype(np.uint8)
-        save(f"paint_splat_{v}", Image.fromarray(rgba, "RGBA"))
+    # Spray paint puff: thousands of tiny droplets, dense in the middle and
+    # thinning to fine speckles at the edge, over a faint haze. White (tinted
+    # by the paint colour in Godot); overlapping puffs build up like real
+    # spray paint.
+    n = 512
+    rng = np.random.default_rng(100)
+    a = np.zeros((n, n))
+    yy, xx = np.mgrid[0:5, 0:5] - 2.0
+    for _ in range(14000):
+        r = min(abs(rng.normal(0.0, 0.34)), 0.97)
+        t = rng.uniform(0, 2 * math.pi)
+        px, py = (0.5 + 0.5 * r * math.cos(t)) * n, (0.5 + 0.5 * r * math.sin(t)) * n
+        rad = rng.uniform(0.5, 1.4)
+        ix, iy = int(px), int(py)
+        if not (2 <= ix < n - 2 and 2 <= iy < n - 2):
+            continue
+        d = np.hypot(xx + ix + 0.5 - px, yy + iy + 0.5 - py)
+        cov = np.clip(rad - d + 0.5, 0, 1) * rng.uniform(0.6, 1.0)
+        win = a[iy - 2:iy + 3, ix - 2:ix + 3]
+        a[iy - 2:iy + 3, ix - 2:ix + 3] = 1 - (1 - win) * (1 - cov)
+    gy, gx = (np.mgrid[0:n, 0:n] + 0.5) / n * 2 - 1
+    haze = 0.32 * np.exp(-(np.hypot(gx, gy) / 0.32) ** 2)
+    a = 1 - (1 - a) * (1 - haze)
+    rgba = np.zeros((n, n, 4), np.uint8)
+    rgba[..., :3] = 255
+    rgba[..., 3] = np.clip(a * 255, 0, 255).astype(np.uint8)
+    save("paint_spray", Image.fromarray(rgba, "RGBA"))
 
     # Spray can label: red with drips and the colour name.
     img = Image.new("RGB", (1024, 384), (205, 18, 24))

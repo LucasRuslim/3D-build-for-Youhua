@@ -18,7 +18,7 @@ func check(cond: bool, msg: String) -> void:
 
 
 func paint_marks(node: Node) -> int:
-	return node.get_children().filter(func(c): return c.name.begins_with("PaintMark")).size()
+	return SprayPaint.mark_count_on(node)
 
 
 func seconds(t: float) -> void:
